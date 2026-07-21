@@ -1,21 +1,29 @@
+import Logo from "@/components/shared/Logo";
+import { Button } from "@/components/ui/button";
+
 export default function Navbar() {
   return (
-    <nav className="w-full border-b border-zinc-800 bg-[#09090B]">
+    <header className="sticky top-0 z-50 border-b border-border bg-background/80 backdrop-blur">
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-6">
-        <div className="text-2xl font-bold text-white">
-          🧠 MindWeave
-        </div>
+        <Logo />
 
-        <div className="hidden gap-8 text-zinc-300 md:flex">
-          <a href="#" className="hover:text-cyan-400">Features</a>
-          <a href="#" className="hover:text-cyan-400">Docs</a>
-          <a href="#" className="hover:text-cyan-400">GitHub</a>
-        </div>
+        <nav className="hidden items-center gap-8 text-sm md:flex">
+          <a href="#" className="hover:text-primary transition-colors">
+            Features
+          </a>
+          <a href="#" className="hover:text-primary transition-colors">
+            Architecture
+          </a>
+          <a href="#" className="hover:text-primary transition-colors">
+            GitHub
+          </a>
+          <a href="#" className="hover:text-primary transition-colors">
+            About
+          </a>
+        </nav>
 
-        <button className="rounded-lg bg-indigo-600 px-4 py-2 text-white hover:bg-indigo-500">
-          Sign In
-        </button>
+        <Button>Sign In</Button>
       </div>
-    </nav>
+    </header>
   );
 }
