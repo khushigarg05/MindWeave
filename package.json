@@ -1,9 +1,8 @@
 {
-  "dependencies": {
-    "lucide-react": "^1.25.0",
-    "morgan": "^1.11.0"
-  },
-  "devDependencies": {
-    "@types/morgan": "^1.9.10"
-  }
+  "name": "mindweave",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "server"
+  ]
 }
