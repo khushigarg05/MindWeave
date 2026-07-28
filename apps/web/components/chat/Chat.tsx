@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 type Message = {
   role: "user" | "ai";
@@ -11,6 +11,33 @@ export default function Chat() {
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+  async function loadHistory() {
+    try {
+      const res = await fetch("http://localhost:5000/chat/history");
+
+      const data = await res.json();
+
+      const chats = data.data.flatMap((chat: any) => [
+        {
+          role: "user",
+          text: chat.userMessage,
+        },
+        {
+          role: "ai",
+          text: chat.aiResponse,
+        },
+      ]);
+
+      setMessages(chats);
+    } catch (err) {
+      console.error(err);
+    }
+  }
+
+  loadHistory();
+}, []);
 
   async function sendMessage() {
     if (!input.trim()) return;
@@ -59,14 +86,14 @@ export default function Chat() {
   }
 
   return (
-    <section className="mx-auto max-w-5xl px-6 py-20">
+    <section className="flex h-full flex-col p-6">
       <h2 className="mb-6 text-4xl font-bold">
         Chat with MindWeave
       </h2>
 
       <div className="rounded-2xl border border-zinc-800 bg-zinc-900">
 
-        <div className="h-[400px] overflow-y-auto p-6 space-y-4">
+        <div className="flex-1 overflow-y-auto p-6 space-y-4">
 
           {messages.map((msg, index) => (
             <div
