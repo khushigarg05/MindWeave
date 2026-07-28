@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 type Message = {
   role: "user" | "ai";
@@ -12,41 +12,55 @@ export default function Chat() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState(false);
 
+  const bottomRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  // Load chat history
   useEffect(() => {
-  async function loadHistory() {
-    try {
-      const res = await fetch("http://localhost:5000/chat/history");
+    async function loadHistory() {
+      try {
+        const res = await fetch("http://localhost:5000/chat/history");
 
-      const data = await res.json();
+        const data = await res.json();
 
-      const chats = data.data.flatMap((chat: any) => [
-        {
-          role: "user",
-          text: chat.userMessage,
-        },
-        {
-          role: "ai",
-          text: chat.aiResponse,
-        },
-      ]);
+        const chats = data.data.flatMap((chat: any) => [
+          {
+            role: "user",
+            text: chat.userMessage,
+          },
+          {
+            role: "ai",
+            text: chat.aiResponse,
+          },
+        ]);
 
-      setMessages(chats);
-    } catch (err) {
-      console.error(err);
+        setMessages(chats);
+      } catch (err) {
+        console.error(err);
+      }
     }
-  }
 
-  loadHistory();
-}, []);
+    loadHistory();
+  }, []);
+
+  // Auto-scroll whenever messages change
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({
+      behavior: "smooth",
+    });
+  }, [messages, loading]);
 
   async function sendMessage() {
-    if (!input.trim()) return;
+    if (!input.trim() || loading) return;
 
     const userText = input;
 
     setMessages((prev) => [
       ...prev,
-      { role: "user", text: userText },
+      {
+        role: "user",
+        text: userText,
+      },
     ]);
 
     setInput("");
@@ -80,9 +94,10 @@ export default function Chat() {
           text: "Server error.",
         },
       ]);
+    } finally {
+      setLoading(false);
+      inputRef.current?.focus();
     }
-
-    setLoading(false);
   }
 
   return (
@@ -91,9 +106,9 @@ export default function Chat() {
         Chat with MindWeave
       </h2>
 
-      <div className="rounded-2xl border border-zinc-800 bg-zinc-900">
+      <div className="flex flex-1 flex-col rounded-2xl border border-zinc-800 bg-zinc-900">
 
-        <div className="flex-1 overflow-y-auto p-6 space-y-4">
+        <div className="flex-1 overflow-y-auto space-y-4 p-6 min-h-0">
 
           {messages.map((msg, index) => (
             <div
@@ -117,16 +132,21 @@ export default function Chat() {
           ))}
 
           {loading && (
-            <p className="text-zinc-400">
-              MindWeave is thinking...
-            </p>
+            <div className="flex items-center gap-2 text-zinc-400">
+              <div className="h-2 w-2 animate-bounce rounded-full bg-cyan-400" />
+              <div className="h-2 w-2 animate-bounce rounded-full bg-cyan-400 [animation-delay:0.2s]" />
+              <div className="h-2 w-2 animate-bounce rounded-full bg-cyan-400 [animation-delay:0.4s]" />
+            </div>
           )}
+
+          <div ref={bottomRef} />
 
         </div>
 
         <div className="flex gap-3 border-t border-zinc-800 p-4">
 
           <input
+            ref={inputRef}
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => {
@@ -140,9 +160,10 @@ export default function Chat() {
 
           <button
             onClick={sendMessage}
-            className="rounded-xl bg-cyan-500 px-6 py-3 font-semibold text-black hover:bg-cyan-400"
+            disabled={loading}
+            className="rounded-xl bg-cyan-500 px-6 py-3 font-semibold text-black transition hover:bg-cyan-400 disabled:cursor-not-allowed disabled:opacity-50"
           >
-            Send
+            {loading ? "Thinking..." : "Send"}
           </button>
 
         </div>
