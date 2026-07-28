@@ -1,21 +1,68 @@
 import { Request, Response } from "express";
-import Chat from "../models/chat.model";
+import Conversation from "../models/conversation.model";
 import { generateResponse } from "../services/ai/ai.service";
 
-export async function chat(req: Request, res: Response) {
+export async function chat(
+  req: Request,
+  res: Response
+) {
   try {
-    const { message } = req.body;
+    const {
+      message,
+      conversationId,
+    } = req.body;
 
-    const response = await generateResponse(message);
+    if (!conversationId) {
+      return res.status(400).json({
+        success: false,
+        message: "Conversation ID required",
+      });
+    }
 
-    await Chat.create({
-      userMessage: response.userMessage,
-      aiResponse: response.aiResponse,
-    });
+    // Find conversation
+    const conversation =
+      await Conversation.findById(
+        conversationId
+      );
+
+    if (!conversation) {
+      return res.status(404).json({
+        success: false,
+        message: "Conversation not found",
+      });
+    }
+
+    // Generate AI response
+    const response =
+      await generateResponse(message);
+
+    // Rename chat using the first user message
+    if (conversation.title === "New Chat") {
+      conversation.title =
+        message.length > 40
+          ? message.substring(0, 40) + "..."
+          : message;
+    }
+
+    // Save messages
+    conversation.messages.push(
+      {
+        role: "user",
+        content: message,
+      },
+      {
+        role: "assistant",
+        content: response.aiResponse,
+      }
+    );
+
+    await conversation.save();
 
     res.json({
       success: true,
-      data: response,
+      data: {
+        aiResponse: response.aiResponse,
+      },
     });
   } catch (error) {
     console.log(error);
@@ -27,13 +74,19 @@ export async function chat(req: Request, res: Response) {
   }
 }
 
-export async function history(req: Request, res: Response) {
+export async function history(
+  req: Request,
+  res: Response
+) {
   try {
-    const chats = await Chat.find().sort({ createdAt: 1 });
+    const conversations =
+      await Conversation.find().sort({
+        updatedAt: -1,
+      });
 
     res.json({
       success: true,
-      data: chats,
+      data: conversations,
     });
   } catch (error) {
     console.log(error);

@@ -7,7 +7,15 @@ type Message = {
   text: string;
 };
 
-export default function Chat() {
+type ChatProps = {
+  conversationId: string | null;
+  onConversationUpdated: () => void;
+};
+
+export default function Chat({
+  conversationId,
+  onConversationUpdated,
+}: ChatProps) {
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState(false);
@@ -15,35 +23,37 @@ export default function Chat() {
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // Load chat history
+  // Load selected conversation
   useEffect(() => {
-    async function loadHistory() {
+    async function loadConversation() {
+      if (!conversationId) {
+        setMessages([]);
+        return;
+      }
+
       try {
-        const res = await fetch("http://localhost:5000/chat/history");
+        const res = await fetch(
+          `http://localhost:5000/conversation/${conversationId}`
+        );
 
         const data = await res.json();
 
-        const chats = data.data.flatMap((chat: any) => [
-          {
-            role: "user",
-            text: chat.userMessage,
-          },
-          {
-            role: "ai",
-            text: chat.aiResponse,
-          },
-        ]);
+        const formatted =
+          data.data?.messages?.map((msg: any) => ({
+            role: msg.role === "assistant" ? "ai" : "user",
+            text: msg.content,
+          })) ?? [];
 
-        setMessages(chats);
-      } catch (err) {
-        console.error(err);
+        setMessages(formatted);
+      } catch (error) {
+        console.error("Load conversation error:", error);
       }
     }
 
-    loadHistory();
-  }, []);
+    loadConversation();
+  }, [conversationId]);
 
-  // Auto-scroll whenever messages change
+  // Auto scroll
   useEffect(() => {
     bottomRef.current?.scrollIntoView({
       behavior: "smooth",
@@ -51,10 +61,11 @@ export default function Chat() {
   }, [messages, loading]);
 
   async function sendMessage() {
-    if (!input.trim() || loading) return;
+    if (!input.trim() || loading || !conversationId) return;
 
     const userText = input;
 
+    // Show user message immediately
     setMessages((prev) => [
       ...prev,
       {
@@ -67,17 +78,25 @@ export default function Chat() {
     setLoading(true);
 
     try {
-      const res = await fetch("http://localhost:5000/chat", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          message: userText,
-        }),
-      });
+      const res = await fetch(
+        "http://localhost:5000/chat",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            message: userText,
+            conversationId,
+          }),
+        }
+      );
 
       const data = await res.json();
+
+      if (!data.success) {
+        throw new Error(data.message);
+      }
 
       setMessages((prev) => [
         ...prev,
@@ -86,12 +105,17 @@ export default function Chat() {
           text: data.data.aiResponse,
         },
       ]);
-    } catch {
+
+      // Refresh sidebar so updated title appears
+      onConversationUpdated();
+    } catch (error) {
+      console.error("Chat error:", error);
+
       setMessages((prev) => [
         ...prev,
         {
           role: "ai",
-          text: "Server error.",
+          text: "Something went wrong.",
         },
       ]);
     } finally {
@@ -107,8 +131,14 @@ export default function Chat() {
       </h2>
 
       <div className="flex flex-1 flex-col rounded-2xl border border-zinc-800 bg-zinc-900">
-
         <div className="flex-1 overflow-y-auto space-y-4 p-6 min-h-0">
+          {messages.length === 0 && (
+            <div className="flex h-full items-center justify-center text-zinc-500">
+              {conversationId
+                ? "Start a conversation..."
+                : "Create a new chat first"}
+            </div>
+          )}
 
           {messages.map((msg, index) => (
             <div
@@ -140,34 +170,41 @@ export default function Chat() {
           )}
 
           <div ref={bottomRef} />
-
         </div>
 
         <div className="flex gap-3 border-t border-zinc-800 p-4">
-
           <input
             ref={inputRef}
             value={input}
-            onChange={(e) => setInput(e.target.value)}
+            onChange={(e) =>
+              setInput(e.target.value)
+            }
             onKeyDown={(e) => {
               if (e.key === "Enter") {
                 sendMessage();
               }
             }}
-            placeholder="Ask anything..."
-            className="flex-1 rounded-xl bg-zinc-950 p-3 text-white outline-none"
+            placeholder={
+              conversationId
+                ? "Ask anything..."
+                : "Create a chat first"
+            }
+            disabled={!conversationId}
+            className="flex-1 rounded-xl bg-zinc-950 p-3 text-white outline-none disabled:opacity-50"
           />
 
           <button
             onClick={sendMessage}
-            disabled={loading}
+            disabled={
+              loading || !conversationId
+            }
             className="rounded-xl bg-cyan-500 px-6 py-3 font-semibold text-black transition hover:bg-cyan-400 disabled:cursor-not-allowed disabled:opacity-50"
           >
-            {loading ? "Thinking..." : "Send"}
+            {loading
+              ? "Thinking..."
+              : "Send"}
           </button>
-
         </div>
-
       </div>
     </section>
   );
