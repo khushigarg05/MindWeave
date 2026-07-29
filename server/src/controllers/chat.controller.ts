@@ -7,10 +7,7 @@ export async function chat(
   res: Response
 ) {
   try {
-    const {
-      message,
-      conversationId,
-    } = req.body;
+    const { message, conversationId } = req.body;
 
     if (!conversationId) {
       return res.status(400).json({
@@ -19,11 +16,16 @@ export async function chat(
       });
     }
 
-    // Find conversation
-    const conversation =
-      await Conversation.findById(
-        conversationId
-      );
+    if (!message || !message.trim()) {
+      return res.status(400).json({
+        success: false,
+        message: "Message is required",
+      });
+    }
+
+    const conversation = await Conversation.findById(
+      conversationId
+    );
 
     if (!conversation) {
       return res.status(404).json({
@@ -32,11 +34,8 @@ export async function chat(
       });
     }
 
-    // Generate AI response
-    const response =
-      await generateResponse(message);
+    const response = await generateResponse(message);
 
-    // Rename chat using the first user message
     if (conversation.title === "New Chat") {
       conversation.title =
         message.length > 40
@@ -44,7 +43,6 @@ export async function chat(
           : message;
     }
 
-    // Save messages
     conversation.messages.push(
       {
         role: "user",
@@ -56,21 +54,121 @@ export async function chat(
       }
     );
 
+    conversation.updatedAt = new Date();
+
     await conversation.save();
 
-    res.json({
+    return res.json({
       success: true,
       data: {
+        conversationId: conversation._id,
+        title: conversation.title,
         aiResponse: response.aiResponse,
       },
     });
   } catch (error) {
-    console.log(error);
+    console.error(error);
 
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: "Server Error",
     });
+  }
+}
+
+// ===========================
+// Streaming Chat Endpoint
+// ===========================
+
+export async function streamChat(
+  req: Request,
+  res: Response
+) {
+  try {
+    const { message, conversationId } = req.body;
+
+    if (!conversationId) {
+      return res.status(400).json({
+        success: false,
+        message: "Conversation ID required",
+      });
+    }
+
+    if (!message || !message.trim()) {
+      return res.status(400).json({
+        success: false,
+        message: "Message is required",
+      });
+    }
+
+    const conversation = await Conversation.findById(
+      conversationId
+    );
+
+    if (!conversation) {
+      return res.status(404).json({
+        success: false,
+        message: "Conversation not found",
+      });
+    }
+
+    const response = await generateResponse(message);
+
+    if (conversation.title === "New Chat") {
+      conversation.title =
+        message.length > 40
+          ? message.substring(0, 40) + "..."
+          : message;
+    }
+
+    conversation.messages.push(
+      {
+        role: "user",
+        content: message,
+      },
+      {
+        role: "assistant",
+        content: response.aiResponse,
+      }
+    );
+
+    conversation.updatedAt = new Date();
+
+    await conversation.save();
+
+    res.setHeader("Content-Type", "text/event-stream");
+    res.setHeader("Cache-Control", "no-cache");
+    res.setHeader("Connection", "keep-alive");
+
+    const words = response.aiResponse.split(" ");
+
+    for (const word of words) {
+      res.write(
+        `data: ${JSON.stringify({
+          token: word + " ",
+        })}\n\n`
+      );
+
+      await new Promise((resolve) =>
+        setTimeout(resolve, 35)
+      );
+    }
+
+    res.write("event: end\n");
+    res.write("data: done\n\n");
+
+    res.end();
+  } catch (error) {
+    console.error(error);
+
+    if (!res.headersSent) {
+      return res.status(500).json({
+        success: false,
+        message: "Server Error",
+      });
+    }
+
+    res.end();
   }
 }
 
@@ -79,19 +177,18 @@ export async function history(
   res: Response
 ) {
   try {
-    const conversations =
-      await Conversation.find().sort({
-        updatedAt: -1,
-      });
+    const conversations = await Conversation.find().sort({
+      updatedAt: -1,
+    });
 
-    res.json({
+    return res.json({
       success: true,
       data: conversations,
     });
   } catch (error) {
-    console.log(error);
+    console.error(error);
 
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: "Server Error",
     });

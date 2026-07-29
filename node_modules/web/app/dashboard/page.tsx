@@ -1,21 +1,13 @@
-import Sidebar from "@/components/dashboard/Sidebar";
-import Header from "@/components/dashboard/Header";
-import ChatPanel from "@/components/dashboard/ChatPanel";
-
-export default function Dashboard() {
+export default function DashboardPage() {
   return (
-    <main className="flex h-screen">
+    <div className="p-10">
+      <h1 className="text-4xl font-bold">
+        Dashboard
+      </h1>
 
-      <Sidebar />
-
-      <div className="flex flex-1 flex-col">
-
-        <Header />
-
-        <ChatPanel />
-
-      </div>
-
-    </main>
+      <p className="mt-4 text-zinc-400">
+        Welcome to MindWeave.
+      </p>
+    </div>
   );
 }
