@@ -16,7 +16,7 @@ export async function chat(
       });
     }
 
-    if (!message || !message.trim()) {
+    if (!message?.trim()) {
       return res.status(400).json({
         success: false,
         message: "Message is required",
@@ -76,9 +76,9 @@ export async function chat(
   }
 }
 
-// ===========================
-// Streaming Chat Endpoint
-// ===========================
+// ===================================================
+// STREAMING ENDPOINT
+// ===================================================
 
 export async function streamChat(
   req: Request,
@@ -94,16 +94,8 @@ export async function streamChat(
       });
     }
 
-    if (!message || !message.trim()) {
-      return res.status(400).json({
-        success: false,
-        message: "Message is required",
-      });
-    }
-
-    const conversation = await Conversation.findById(
-      conversationId
-    );
+    const conversation =
+      await Conversation.findById(conversationId);
 
     if (!conversation) {
       return res.status(404).json({
@@ -112,7 +104,8 @@ export async function streamChat(
       });
     }
 
-    const response = await generateResponse(message);
+    const response =
+      await generateResponse(message);
 
     if (conversation.title === "New Chat") {
       conversation.title =
@@ -136,11 +129,24 @@ export async function streamChat(
 
     await conversation.save();
 
-    res.setHeader("Content-Type", "text/event-stream");
-    res.setHeader("Cache-Control", "no-cache");
-    res.setHeader("Connection", "keep-alive");
+    // SSE Headers
+    res.setHeader(
+      "Content-Type",
+      "text/event-stream"
+    );
+    res.setHeader(
+      "Cache-Control",
+      "no-cache"
+    );
+    res.setHeader(
+      "Connection",
+      "keep-alive"
+    );
 
-    const words = response.aiResponse.split(" ");
+    res.flushHeaders();
+
+    const words =
+      response.aiResponse.split(" ");
 
     for (const word of words) {
       res.write(
@@ -177,9 +183,10 @@ export async function history(
   res: Response
 ) {
   try {
-    const conversations = await Conversation.find().sort({
-      updatedAt: -1,
-    });
+    const conversations =
+      await Conversation.find().sort({
+        updatedAt: -1,
+      });
 
     return res.json({
       success: true,

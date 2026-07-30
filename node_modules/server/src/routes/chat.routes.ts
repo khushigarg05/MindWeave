@@ -7,13 +7,13 @@ import {
 
 const router = Router();
 
-// Normal chat
+// Standard chat endpoint
 router.post("/", chat);
 
-// Streaming chat
+// Streaming (ChatGPT-style typing)
 router.post("/stream", streamChat);
 
-// Chat history
+// Conversation history
 router.get("/history", history);
 
 export default router;
