@@ -4,5 +4,9 @@
   "workspaces": [
     "apps/*",
     "server"
-  ]
+  ],
+  "dependencies": {
+    "dotenv": "^17.4.2",
+    "groq-sdk": "^1.4.1"
+  }
 }
