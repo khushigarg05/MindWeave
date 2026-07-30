@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import MessageBubble from "./MessageBubble";
+import TypingIndicator from "./TypingIndicator";
 
 type Message = {
   role: "user" | "ai";
@@ -21,10 +23,10 @@ export default function Chat({
   const [loading, setLoading] = useState(false);
 
   const bottomRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
 
   // ===========================
-  // Load conversation messages
+  // Load Conversation
   // ===========================
   useEffect(() => {
     async function loadConversation() {
@@ -70,14 +72,25 @@ export default function Chat({
   }, [messages, loading]);
 
   // ===========================
-  // Send Message (Streaming)
+  // Auto Grow Textarea
+  // ===========================
+  useEffect(() => {
+    if (inputRef.current) {
+      inputRef.current.style.height = "0px";
+      inputRef.current.style.height =
+        inputRef.current.scrollHeight + "px";
+    }
+  }, [input]);
+
+  // ===========================
+  // Send Message
   // ===========================
   async function sendMessage() {
     if (!conversationId || loading || !input.trim()) return;
 
     const userText = input.trim();
 
-    // Show user message immediately
+    // Show user message instantly
     setMessages((prev) => [
       ...prev,
       {
@@ -137,7 +150,9 @@ export default function Chat({
 
           if (!line) continue;
 
-          const payload = line.replace("data:", "").trim();
+          const payload = line
+            .replace("data:", "")
+            .trim();
 
           if (payload === "done") continue;
 
@@ -157,15 +172,14 @@ export default function Chat({
               return updated;
             });
           } catch (err) {
-            console.error(err);
+            console.error("Stream parse error:", err);
           }
         }
       }
 
-      // Refresh sidebar (title may have changed)
       onConversationUpdated();
     } catch (error) {
-      console.error(error);
+      console.error("Streaming error:", error);
 
       setMessages((prev) => {
         const updated = [...prev];
@@ -194,7 +208,7 @@ export default function Chat({
 
       <div className="flex flex-1 flex-col rounded-2xl border border-zinc-800 bg-zinc-900">
         {/* Messages */}
-        <div className="flex-1 overflow-y-auto space-y-4 p-6 min-h-0">
+        <div className="flex-1 space-y-4 overflow-y-auto p-6 min-h-0">
           {messages.length === 0 && (
             <div className="flex h-full items-center justify-center text-zinc-500">
               {conversationId
@@ -204,43 +218,33 @@ export default function Chat({
           )}
 
           {messages.map((msg, index) => (
-            <div
+            <MessageBubble
               key={index}
-              className={`flex ${
-                msg.role === "user"
-                  ? "justify-end"
-                  : "justify-start"
-              }`}
-            >
-              <div
-                className={`max-w-[75%] rounded-xl px-4 py-3 whitespace-pre-wrap break-words ${
-                  msg.role === "user"
-                    ? "bg-cyan-500 text-black"
-                    : "bg-zinc-800 text-white"
-                }`}
-              >
-                {msg.text}
-
-                {loading &&
-                  index === messages.length - 1 &&
-                  msg.role === "ai" && (
-                    <span className="animate-pulse">▋</span>
-                  )}
-              </div>
-            </div>
+              role={msg.role}
+              text={msg.text}
+            />
           ))}
+
+          {loading && <TypingIndicator />}
 
           <div ref={bottomRef} />
         </div>
 
         {/* Input */}
         <div className="flex gap-3 border-t border-zinc-800 p-4">
-          <input
+          <textarea
             ref={inputRef}
+            rows={1}
             value={input}
-            onChange={(e) => setInput(e.target.value)}
+            onChange={(e) =>
+              setInput(e.target.value)
+            }
             onKeyDown={(e) => {
-              if (e.key === "Enter") {
+              if (
+                e.key === "Enter" &&
+                !e.shiftKey
+              ) {
+                e.preventDefault();
                 sendMessage();
               }
             }}
@@ -250,12 +254,14 @@ export default function Chat({
                 ? "Ask anything..."
                 : "Create a chat first"
             }
-            className="flex-1 rounded-xl bg-zinc-950 p-3 text-white outline-none disabled:opacity-50"
+            className="max-h-48 flex-1 resize-none overflow-y-auto rounded-xl bg-zinc-950 p-3 text-white outline-none disabled:opacity-50"
           />
 
           <button
             onClick={sendMessage}
-            disabled={!conversationId || loading}
+            disabled={
+              !conversationId || loading
+            }
             className="rounded-xl bg-cyan-500 px-6 py-3 font-semibold text-black transition hover:bg-cyan-400 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {loading ? "Thinking..." : "Send"}

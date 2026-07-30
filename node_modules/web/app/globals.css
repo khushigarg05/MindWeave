@@ -1,3 +1,4 @@
+@import "highlight.js/styles/github-dark.css";
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
@@ -127,4 +128,72 @@
   html {
     @apply font-mono;
   }
+}
+/* ===========================
+   Markdown Styling
+=========================== */
+
+.prose {
+  max-width: none;
+}
+
+.prose p {
+  margin: 12px 0;
+  line-height: 1.7;
+}
+
+.prose h1,
+.prose h2,
+.prose h3,
+.prose h4 {
+  margin-top: 20px;
+  margin-bottom: 12px;
+  font-weight: 700;
+}
+
+.prose ul,
+.prose ol {
+  margin: 12px 0;
+  padding-left: 24px;
+}
+
+.prose li {
+  margin: 6px 0;
+}
+
+.prose blockquote {
+  border-left: 4px solid #06b6d4;
+  padding-left: 16px;
+  color: #d4d4d8;
+  margin: 16px 0;
+}
+
+.prose pre {
+  border-radius: 14px;
+  padding: 18px;
+  overflow-x: auto;
+  margin: 16px 0;
+}
+
+.prose code:not(pre code) {
+  background: #27272a;
+  padding: 2px 6px;
+  border-radius: 6px;
+  font-size: 14px;
+}
+
+.prose table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.prose table th,
+.prose table td {
+  border: 1px solid #3f3f46;
+  padding: 10px;
+}
+
+.prose a {
+  color: #22d3ee;
+  text-decoration: underline;
 }
