@@ -22,6 +22,9 @@ export default function Sidebar({
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [loading, setLoading] = useState(false);
 
+  // ==========================
+  // Load Conversations
+  // ==========================
   async function loadConversations() {
     try {
       const res = await fetch(
@@ -38,7 +41,7 @@ export default function Sidebar({
 
       setConversations(list);
 
-      // Select first conversation only once
+      // Auto-select first conversation
       if (!activeConversation && list.length > 0) {
         setActiveConversation(list[0]._id);
       }
@@ -51,6 +54,9 @@ export default function Sidebar({
     loadConversations();
   }, [refreshSidebar]);
 
+  // ==========================
+  // Create Conversation
+  // ==========================
   async function createConversation() {
     try {
       setLoading(true);
@@ -76,7 +82,7 @@ export default function Sidebar({
         ...prev,
       ]);
 
-      // Open it immediately
+      // Open immediately
       setActiveConversation(newConversation._id);
     } catch (err) {
       console.error("Create Error:", err);
@@ -87,8 +93,8 @@ export default function Sidebar({
 
   return (
     <aside className="flex w-72 flex-col border-r border-zinc-800 bg-zinc-950">
-
-      <div className="p-5">
+      {/* Header */}
+      <div className="border-b border-zinc-800 p-5">
         <button
           onClick={createConversation}
           disabled={loading}
@@ -99,9 +105,9 @@ export default function Sidebar({
         </button>
       </div>
 
-      <div className="flex-1 overflow-y-auto px-4">
-
-        <h3 className="mb-3 text-sm uppercase text-zinc-500">
+      {/* Conversation List */}
+      <div className="flex-1 overflow-y-auto px-4 py-4">
+        <h3 className="mb-3 text-xs font-semibold uppercase tracking-wide text-zinc-500">
           Recent Chats
         </h3>
 
@@ -116,13 +122,16 @@ export default function Sidebar({
               onClick={() =>
                 setActiveConversation(conversation._id)
               }
-              className={`mb-2 flex w-full items-center gap-3 rounded-lg p-3 text-left transition ${
+              className={`mb-2 flex w-full items-center gap-3 rounded-xl p-3 text-left transition ${
                 activeConversation === conversation._id
                   ? "bg-cyan-500 text-black"
-                  : "hover:bg-zinc-900"
+                  : "text-white hover:bg-zinc-900"
               }`}
             >
-              <MessageSquare size={18} />
+              <MessageSquare
+                size={18}
+                className="shrink-0"
+              />
 
               <span className="truncate">
                 {conversation.title}
@@ -130,9 +139,7 @@ export default function Sidebar({
             </button>
           ))
         )}
-
       </div>
-
     </aside>
   );
 }
