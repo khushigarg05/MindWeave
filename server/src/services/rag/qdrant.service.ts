@@ -1,0 +1,31 @@
+import { QdrantClient } from "@qdrant/js-client-rest";
+import { env } from "../../config/env";
+
+export const qdrant = new QdrantClient({
+  url: env.QDRANT_URL,
+  apiKey: env.QDRANT_API_KEY,
+});
+
+export async function createCollection() {
+  const collectionName = "mindweave";
+
+  const collections = await qdrant.getCollections();
+
+  const exists = collections.collections.some(
+    (c) => c.name === collectionName
+  );
+
+  if (exists) {
+    console.log("✅ Collection already exists");
+    return;
+  }
+
+  await qdrant.createCollection(collectionName, {
+    vectors: {
+      size: 384,
+      distance: "Cosine",
+    },
+  });
+
+  console.log("✅ Qdrant Collection Created");
+}

@@ -13,4 +13,8 @@ export const env = {
   MONGODB_URI: process.env.MONGODB_URI!,
   GROQ_API_KEY: process.env.GROQ_API_KEY!,
   HUGGINGFACE_API_KEY: process.env.HUGGINGFACE_API_KEY!,
+
+  QDRANT_URL: process.env.QDRANT_URL!,
+
+  QDRANT_API_KEY: process.env.QDRANT_API_KEY!,
 };
