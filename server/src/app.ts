@@ -4,6 +4,7 @@ import cors from "cors";
 import chatRoutes from "./routes/chat.routes";
 import conversationRoutes from "./routes/conversation.routes";
 import uploadRoutes from "./routes/upload.routes";
+import searchRoutes from "./routes/search.routes";
 
 const app = express();
 
@@ -14,6 +15,7 @@ app.use(express.urlencoded({ extended: true, limit: "50mb" }));
 app.use("/conversation", conversationRoutes);
 app.use("/chat", chatRoutes);
 app.use("/upload", uploadRoutes);
+app.use("/search", searchRoutes);
 
 app.get("/", (req, res) => {
   res.json({
