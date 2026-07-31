@@ -13,18 +13,26 @@
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {
+    "@langchain/community": "^1.1.29",
+    "@langchain/core": "^1.2.4",
+    "@langchain/textsplitters": "^1.0.1",
     "axios": "^1.18.1",
     "cors": "^2.8.6",
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
     "groq-sdk": "^1.4.1",
+    "langchain": "^1.5.4",
     "mongoose": "^9.8.0",
-    "openai": "^6.49.0"
+    "multer": "^2.2.0",
+    "openai": "^6.49.0",
+    "pdf-parse": "^2.4.5",
+    "uuid": "^14.0.1"
   },
   "devDependencies": {
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.6",
     "@types/mongoose": "^5.11.96",
+    "@types/multer": "^2.2.0",
     "@types/node": "^26.1.1",
     "tsx": "^4.23.1",
     "typescript": "^5.9.2"
