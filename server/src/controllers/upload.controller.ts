@@ -1,7 +1,7 @@
 import { Request, Response } from "express";
 import { extractPdfText } from "../services/rag/pdf.service";
 import { splitIntoChunks } from "../services/rag/chunk.service";
-import { generateEmbedding } from "../services/rag/embedding.service";
+import { storeChunks } from "../services/rag/vector.service";
 
 export async function uploadDocument(
   req: Request,
@@ -34,32 +34,18 @@ export async function uploadDocument(
     console.log(`TOTAL CHUNKS: ${chunks.length}`);
     console.log("====================================");
 
-    chunks.forEach((chunk, index) => {
-      console.log(`\nChunk ${index + 1}`);
-      console.log("------------------------------------");
-      console.log(chunk.pageContent.substring(0, 150));
-    });
-
     // ===========================
-    // Generate embedding for first chunk
+    // Store all chunks in Qdrant
     // ===========================
     console.log("====================================");
-    console.log("GENERATING EMBEDDING...");
+    console.log("GENERATING EMBEDDINGS & STORING...");
     console.log("====================================");
 
-    const embedding = await generateEmbedding(
-      chunks[0].pageContent
-    );
+    await storeChunks(chunks);
 
-    console.log(
-      "Embedding dimension:",
-      embedding.length
-    );
-
-    console.log(
-      "First 10 values:",
-      embedding.slice(0, 10)
-    );
+    console.log("====================================");
+    console.log("ALL CHUNKS STORED SUCCESSFULLY");
+    console.log("====================================");
 
     // ===========================
     // Response
@@ -76,8 +62,7 @@ export async function uploadDocument(
 
       characters: text.length,
       totalChunks: chunks.length,
-
-      embeddingDimension: embedding.length,
+      storedChunks: chunks.length,
 
       preview: chunks[0].pageContent.substring(0, 500),
     });
