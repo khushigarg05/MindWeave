@@ -13,6 +13,7 @@
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {
+    "@huggingface/inference": "^4.13.23",
     "@langchain/community": "^1.1.29",
     "@langchain/core": "^1.2.4",
     "@langchain/textsplitters": "^1.0.1",
