@@ -66,14 +66,32 @@ ANSWER
         max_tokens: 1024,
       });
 
+    // ===========================
+    // Extract unique sources
+    // ===========================
+    const sources = Array.from(
+      new Map(
+        matches.map((chunk) => [
+          chunk.filename,
+          {
+            filename: chunk.filename,
+            score: Number(chunk.score.toFixed(3)),
+          },
+        ])
+      ).values()
+    );
+
     return {
       success: true,
       userMessage: message,
+
       aiResponse:
         completion.choices[0]?.message?.content ??
         "No response generated.",
 
       retrievedChunks: matches,
+
+      sources,
     };
 
   } catch (error) {
@@ -85,6 +103,10 @@ ANSWER
       userMessage: message,
       aiResponse:
         "Sorry, I am unable to answer right now.",
+
+      retrievedChunks: [],
+
+      sources: [],
     };
   }
 }

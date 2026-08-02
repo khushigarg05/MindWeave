@@ -36,6 +36,7 @@ export async function chat(
 
     const response = await generateResponse(message);
 
+    // Auto rename first conversation
     if (conversation.title === "New Chat") {
       conversation.title =
         message.length > 40
@@ -63,9 +64,15 @@ export async function chat(
       data: {
         conversationId: conversation._id,
         title: conversation.title,
+
         aiResponse: response.aiResponse,
+
+        sources: response.sources,
+
+        retrievedChunks: response.retrievedChunks,
       },
     });
+
   } catch (error) {
     console.error(error);
 
@@ -160,10 +167,22 @@ export async function streamChat(
       );
     }
 
+    // Send sources after streaming finishes
+    res.write(
+      `event: sources\n`
+    );
+
+    res.write(
+      `data: ${JSON.stringify(
+        response.sources
+      )}\n\n`
+    );
+
     res.write("event: end\n");
     res.write("data: done\n\n");
 
     res.end();
+
   } catch (error) {
     console.error(error);
 
@@ -192,6 +211,7 @@ export async function history(
       success: true,
       data: conversations,
     });
+
   } catch (error) {
     console.error(error);
 
