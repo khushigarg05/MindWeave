@@ -1,4 +1,5 @@
 import Groq from "groq-sdk";
+import { searchRelevantChunks } from "../rag/search.service";
 
 const groq = new Groq({
   apiKey: process.env.GROQ_API_KEY,
@@ -6,41 +7,78 @@ const groq = new Groq({
 
 export async function generateResponse(message: string) {
   try {
+    // ===========================
+    // Retrieve relevant chunks
+    // ===========================
+    const matches = await searchRelevantChunks(message);
+
+    const context = matches
+      .map((chunk) => chunk.text)
+      .join("\n\n");
+
+    // ===========================
+    // Build RAG Prompt
+    // ===========================
+    const prompt = `
+You are MindWeave AI.
+
+Answer ONLY using the information provided in the context below.
+
+If the answer is not present in the context, reply exactly:
+
+"I couldn't find that information in the uploaded documents."
+
+Do not make up facts.
+Do not use your own knowledge.
+
+=========================
+CONTEXT
+=========================
+
+${context}
+
+=========================
+QUESTION
+=========================
+
+${message}
+
+=========================
+ANSWER
+=========================
+`;
+
+    // ===========================
+    // Groq
+    // ===========================
     const completion =
       await groq.chat.completions.create({
         model: "llama-3.3-70b-versatile",
 
         messages: [
           {
-            role: "system",
-            content:
-              "You are MindWeave AI, a helpful AI assistant. Give clear and detailed answers.",
-          },
-          {
             role: "user",
-            content: message,
+            content: prompt,
           },
         ],
 
-        temperature: 0.7,
+        temperature: 0.2,
         max_tokens: 1024,
       });
-
 
     return {
       success: true,
       userMessage: message,
       aiResponse:
-        completion.choices[0]?.message?.content ||
+        completion.choices[0]?.message?.content ??
         "No response generated.",
+
+      retrievedChunks: matches,
     };
 
   } catch (error) {
 
-    console.error(
-      "Groq API Error:",
-      error
-    );
+    console.error("Groq API Error:", error);
 
     return {
       success: false,

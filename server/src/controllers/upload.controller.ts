@@ -8,6 +8,9 @@ export async function uploadDocument(
   res: Response
 ) {
   try {
+    // ===========================
+    // Check file
+    // ===========================
     if (!req.file) {
       return res.status(400).json({
         success: false,
@@ -35,24 +38,27 @@ export async function uploadDocument(
     console.log("====================================");
 
     // ===========================
-    // Store all chunks in Qdrant
+    // Store chunks in Qdrant
     // ===========================
     console.log("====================================");
     console.log("GENERATING EMBEDDINGS & STORING...");
     console.log("====================================");
 
-    await storeChunks(chunks);
+    await storeChunks(
+      chunks,
+      req.file.originalname
+    );
 
     console.log("====================================");
     console.log("ALL CHUNKS STORED SUCCESSFULLY");
     console.log("====================================");
 
     // ===========================
-    // Response
+    // Success Response
     // ===========================
-    return res.json({
+    return res.status(200).json({
       success: true,
-      message: "PDF processed successfully",
+      message: "PDF uploaded and indexed successfully",
 
       file: {
         filename: req.file.filename,
@@ -64,7 +70,10 @@ export async function uploadDocument(
       totalChunks: chunks.length,
       storedChunks: chunks.length,
 
-      preview: chunks[0].pageContent.substring(0, 500),
+      preview:
+        chunks.length > 0
+          ? chunks[0].pageContent.substring(0, 500)
+          : "",
     });
 
   } catch (err) {
@@ -73,7 +82,10 @@ export async function uploadDocument(
     return res.status(500).json({
       success: false,
       message: "Failed to process PDF",
-      error: err instanceof Error ? err.message : "Unknown error",
+      error:
+        err instanceof Error
+          ? err.message
+          : "Unknown error",
     });
   }
 }

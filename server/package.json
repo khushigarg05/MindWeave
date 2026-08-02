@@ -22,7 +22,7 @@
     "cors": "^2.8.6",
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
-    "groq-sdk": "^1.4.1",
+    "groq-sdk": "^1.5.0",
     "langchain": "^1.5.4",
     "mongoose": "^9.8.0",
     "multer": "^2.2.0",

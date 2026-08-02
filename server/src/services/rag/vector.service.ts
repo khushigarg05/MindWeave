@@ -6,31 +6,38 @@ interface Chunk {
   pageContent: string;
 }
 
-export async function storeChunks(chunks: Chunk[]) {
-  const points: {
-    id: string;
-    vector: number[];
-    payload: {
-      text: string;
-    };
-  }[] = [];
+export async function storeChunks(
+  chunks: Chunk[],
+  filename: string
+) {
+  console.log("====================================");
+  console.log("GENERATING EMBEDDINGS...");
+  console.log("====================================");
 
-  for (const chunk of chunks) {
-    const embedding = await generateEmbedding(chunk.pageContent);
+  const points = await Promise.all(
+    chunks.map(async (chunk) => {
+      const embedding = await generateEmbedding(
+        chunk.pageContent
+      );
 
-    points.push({
-      id: uuid(),
-      vector: embedding,
-      payload: {
-        text: chunk.pageContent,
-      },
-    });
-  }
+      return {
+        id: uuid(),
+        vector: embedding,
+        payload: {
+          text: chunk.pageContent,
+          source: "uploaded-pdf",
+          filename,
+        },
+      };
+    })
+  );
+
+  console.log(`Storing ${points.length} vectors...`);
 
   await qdrant.upsert("mindweave", {
     wait: true,
-    points,
+    points: points as any,
   });
 
-  console.log(`✅ Stored ${points.length} chunks`);
+  console.log("✅ All vectors stored successfully");
 }

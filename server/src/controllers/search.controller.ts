@@ -12,13 +12,14 @@ export async function search(req: Request, res: Response) {
       });
     }
 
-    const chunks = await searchRelevantChunks(query);
+    const matches = await searchRelevantChunks(query);
 
     return res.json({
       success: true,
       query,
-      matches: chunks,
+      matches,
     });
+
   } catch (error) {
     console.error(error);
 
