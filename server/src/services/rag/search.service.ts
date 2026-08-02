@@ -1,28 +1,57 @@
 import { generateEmbedding } from "./embedding.service";
 import { qdrant } from "./qdrant.service";
 
-const SIMILARITY_THRESHOLD = 0.65;
+// Temporarily disable filtering for debugging
+const SIMILARITY_THRESHOLD = 0.35;
 
 export async function searchRelevantChunks(query: string) {
-  // Generate embedding for user query
+  // ===========================
+  // Generate query embedding
+  // ===========================
   const embedding = await generateEmbedding(query);
 
+  console.log("====================================");
+  console.log("SEARCH QUERY");
+  console.log(query);
+  console.log("Embedding Dimension:", embedding.length);
+  console.log("====================================");
+
+  // ===========================
   // Search Qdrant
+  // ===========================
   const result = await qdrant.search("mindweave", {
     vector: embedding,
     limit: 5,
     with_payload: true,
   });
 
-  // Keep only relevant chunks
-  const filtered = result.filter(
-    (point: any) => point.score >= SIMILARITY_THRESHOLD
-  );
+  // ===========================
+  // Print raw search results
+  // ===========================
+  console.log("========== RAW SEARCH RESULTS ==========");
 
-  // Sort by similarity score (highest first)
-  filtered.sort(
-    (a: any, b: any) => b.score - a.score
-  );
+  if (result.length === 0) {
+    console.log("❌ Qdrant returned 0 results");
+  } else {
+    result.forEach((point: any, index: number) => {
+      console.log({
+        rank: index + 1,
+        score: point.score,
+        filename: point.payload?.filename,
+      });
+    });
+  }
+
+  console.log("========================================");
+
+  // ======================================================
+  // DEBUG:
+  // Return ALL results (no threshold filtering)
+  // ======================================================
+  const filtered = result;
+
+  // Sort highest score first
+  filtered.sort((a: any, b: any) => b.score - a.score);
 
   return filtered.map((point: any) => ({
     score: point.score,
