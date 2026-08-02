@@ -12,24 +12,72 @@ export async function generateResponse(message: string) {
     // ===========================
     const matches = await searchRelevantChunks(message);
 
+    // ======================================================
+    // No relevant document found -> Normal AI conversation
+    // ======================================================
+    if (matches.length === 0) {
+      const completion =
+        await groq.chat.completions.create({
+          model: "llama-3.3-70b-versatile",
+
+          messages: [
+            {
+              role: "system",
+              content:
+                "You are MindWeave AI, a helpful AI assistant. Answer naturally and clearly.",
+            },
+            {
+              role: "user",
+              content: message,
+            },
+          ],
+
+          temperature: 0.7,
+          max_tokens: 1024,
+        });
+
+      return {
+        success: true,
+        userMessage: message,
+
+        aiResponse:
+          completion.choices[0]?.message?.content ??
+          "No response generated.",
+
+        retrievedChunks: [],
+
+        sources: [],
+      };
+    }
+
+    // ===========================
+    // Build Context
+    // ===========================
     const context = matches
       .map((chunk) => chunk.text)
       .join("\n\n");
 
     // ===========================
-    // Build RAG Prompt
+    // Better RAG Prompt
     // ===========================
     const prompt = `
 You are MindWeave AI.
 
-Answer ONLY using the information provided in the context below.
+You MUST answer ONLY using the information inside the provided CONTEXT.
 
-If the answer is not present in the context, reply exactly:
+Rules:
+
+- Never hallucinate.
+- Never invent facts.
+- Never use outside knowledge.
+- If the answer isn't contained inside the context, reply exactly:
 
 "I couldn't find that information in the uploaded documents."
 
-Do not make up facts.
-Do not use your own knowledge.
+When possible:
+- Use bullet points.
+- Keep answers concise.
+- Merge information from multiple retrieved chunks.
 
 =========================
 CONTEXT
@@ -67,7 +115,7 @@ ANSWER
       });
 
     // ===========================
-    // Extract unique sources
+    // Unique Sources
     // ===========================
     const sources = Array.from(
       new Map(
@@ -95,12 +143,12 @@ ANSWER
     };
 
   } catch (error) {
-
     console.error("Groq API Error:", error);
 
     return {
       success: false,
       userMessage: message,
+
       aiResponse:
         "Sorry, I am unable to answer right now.",
 
