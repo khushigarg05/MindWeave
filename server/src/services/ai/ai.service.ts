@@ -5,7 +5,10 @@ const groq = new Groq({
   apiKey: process.env.GROQ_API_KEY,
 });
 
-export async function generateResponse(message: string) {
+export async function generateResponse(
+  message: string,
+  history: string
+) {
   try {
     // ===========================
     // Retrieve relevant chunks
@@ -24,11 +27,19 @@ export async function generateResponse(message: string) {
             {
               role: "system",
               content:
-                "You are MindWeave AI, a helpful AI assistant. Answer naturally and clearly.",
+                "You are MindWeave AI, a helpful AI assistant. Continue the conversation naturally using the previous conversation when relevant.",
             },
             {
               role: "user",
-              content: message,
+              content: `
+Previous Conversation:
+
+${history}
+
+Current User Message:
+
+${message}
+`,
             },
           ],
 
@@ -58,35 +69,46 @@ export async function generateResponse(message: string) {
       .join("\n\n");
 
     // ===========================
-    // Better RAG Prompt
+    // RAG Prompt
     // ===========================
     const prompt = `
 You are MindWeave AI.
 
-You MUST answer ONLY using the information inside the provided CONTEXT.
+You are given:
+
+1. Previous conversation
+2. Retrieved document context
+
+Always use the retrieved context as the primary source of truth.
+
+Conversation history helps you understand follow-up questions.
 
 Rules:
 
+- Answer ONLY using the retrieved context.
 - Never hallucinate.
 - Never invent facts.
 - Never use outside knowledge.
-- If the answer isn't contained inside the context, reply exactly:
+- If the answer isn't present in the context, reply exactly:
 
 "I couldn't find that information in the uploaded documents."
 
-When possible:
-- Use bullet points.
-- Keep answers concise.
-- Merge information from multiple retrieved chunks.
+Use concise bullet points whenever appropriate.
 
 =========================
-CONTEXT
+PREVIOUS CONVERSATION
+=========================
+
+${history}
+
+=========================
+RETRIEVED CONTEXT
 =========================
 
 ${context}
 
 =========================
-QUESTION
+CURRENT QUESTION
 =========================
 
 ${message}
@@ -141,7 +163,6 @@ ANSWER
 
       sources,
     };
-
   } catch (error) {
     console.error("Groq API Error:", error);
 

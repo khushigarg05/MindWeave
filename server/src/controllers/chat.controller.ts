@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import Conversation from "../models/conversation.model";
 import { generateResponse } from "../services/ai/ai.service";
+import { buildConversationContext } from "../services/chat/history.service";
 
 export async function chat(
   req: Request,
@@ -34,7 +35,20 @@ export async function chat(
       });
     }
 
-    const response = await generateResponse(message);
+    // ===========================
+    // Build conversation history
+    // ===========================
+    const history = buildConversationContext(
+      conversation.messages
+    );
+
+    // ===========================
+    // Generate response
+    // ===========================
+    const response = await generateResponse(
+      message,
+      history
+    );
 
     // Auto rename first conversation
     if (conversation.title === "New Chat") {
@@ -69,10 +83,10 @@ export async function chat(
 
         sources: response.sources,
 
-        retrievedChunks: response.retrievedChunks,
+        retrievedChunks:
+          response.retrievedChunks,
       },
     });
-
   } catch (error) {
     console.error(error);
 
@@ -102,7 +116,9 @@ export async function streamChat(
     }
 
     const conversation =
-      await Conversation.findById(conversationId);
+      await Conversation.findById(
+        conversationId
+      );
 
     if (!conversation) {
       return res.status(404).json({
@@ -111,8 +127,21 @@ export async function streamChat(
       });
     }
 
+    // ===========================
+    // Build history
+    // ===========================
+    const history = buildConversationContext(
+      conversation.messages
+    );
+
+    // ===========================
+    // Generate response
+    // ===========================
     const response =
-      await generateResponse(message);
+      await generateResponse(
+        message,
+        history
+      );
 
     if (conversation.title === "New Chat") {
       conversation.title =
@@ -167,11 +196,8 @@ export async function streamChat(
       );
     }
 
-    // Send sources after streaming finishes
-    res.write(
-      `event: sources\n`
-    );
-
+    // Send sources after streaming
+    res.write("event: sources\n");
     res.write(
       `data: ${JSON.stringify(
         response.sources
@@ -182,7 +208,6 @@ export async function streamChat(
     res.write("data: done\n\n");
 
     res.end();
-
   } catch (error) {
     console.error(error);
 
@@ -211,7 +236,6 @@ export async function history(
       success: true,
       data: conversations,
     });
-
   } catch (error) {
     console.error(error);
 
