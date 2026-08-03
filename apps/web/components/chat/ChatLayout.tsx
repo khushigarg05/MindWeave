@@ -17,7 +17,7 @@ export default function ChatLayout() {
   console.log("ACTIVE:", activeConversation);
 
   return (
-    <section className="flex min-h-screen border-t border-zinc-800 bg-black">
+    <section className="flex h-screen overflow-hidden border-t border-zinc-800 bg-black">
 
       <Sidebar
         activeConversation={activeConversation}
@@ -25,7 +25,7 @@ export default function ChatLayout() {
         refreshSidebar={refreshSidebar}
       />
 
-      <main className="flex flex-1 overflow-hidden">
+      <main className="flex flex-1 min-h-0 overflow-hidden">
 
         <Chat
           conversationId={activeConversation}

@@ -4,9 +4,22 @@ import { useEffect, useRef, useState } from "react";
 import MessageBubble from "./MessageBubble";
 import TypingIndicator from "./TypingIndicator";
 
+type Source = {
+  filename: string;
+  score: number;
+};
+
+type RetrievedChunk = {
+  filename: string;
+  score: number;
+  text: string;
+};
+
 type Message = {
   role: "user" | "ai";
   text: string;
+  sources?: Source[];
+  retrievedChunks?: RetrievedChunk[];
 };
 
 type ChatProps = {
@@ -28,6 +41,7 @@ export default function Chat({
   // ===========================
   // Load Conversation
   // ===========================
+
   useEffect(() => {
     async function loadConversation() {
       if (!conversationId) {
@@ -54,7 +68,7 @@ export default function Chat({
 
         setMessages(chatMessages);
       } catch (error) {
-        console.error("Conversation loading error:", error);
+        console.error(error);
         setMessages([]);
       }
     }
@@ -65,6 +79,7 @@ export default function Chat({
   // ===========================
   // Auto Scroll
   // ===========================
+
   useEffect(() => {
     bottomRef.current?.scrollIntoView({
       behavior: "smooth",
@@ -74,23 +89,24 @@ export default function Chat({
   // ===========================
   // Auto Grow Textarea
   // ===========================
+
   useEffect(() => {
-    if (inputRef.current) {
-      inputRef.current.style.height = "0px";
-      inputRef.current.style.height =
-        inputRef.current.scrollHeight + "px";
-    }
+    if (!inputRef.current) return;
+
+    inputRef.current.style.height = "0px";
+    inputRef.current.style.height =
+      inputRef.current.scrollHeight + "px";
   }, [input]);
 
   // ===========================
   // Send Message
   // ===========================
+
   async function sendMessage() {
     if (!conversationId || loading || !input.trim()) return;
 
     const userText = input.trim();
 
-    // Show user message instantly
     setMessages((prev) => [
       ...prev,
       {
@@ -115,8 +131,8 @@ export default function Chat({
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            message: userText,
             conversationId,
+            message: userText,
           }),
         }
       );
@@ -144,17 +160,87 @@ export default function Chat({
         buffer = events.pop() || "";
 
         for (const event of events) {
-          const line = event
-            .split("\n")
-            .find((l) => l.startsWith("data:"));
+          const lines = event.split("\n");
 
-          if (!line) continue;
+          const eventName =
+            lines.find((l) => l.startsWith("event:"))
+              ?.replace("event:", "")
+              .trim() ?? "message";
 
-          const payload = line
+          const dataLine = lines.find((l) =>
+            l.startsWith("data:")
+          );
+
+          if (!dataLine) continue;
+
+          const payload = dataLine
             .replace("data:", "")
             .trim();
 
-          if (payload === "done") continue;
+          // ===========================
+          // END
+          // ===========================
+
+          if (eventName === "end") {
+            continue;
+          }
+
+          // ===========================
+          // SOURCES
+          // ===========================
+
+          if (eventName === "sources") {
+            try {
+              const sources: Source[] =
+                JSON.parse(payload);
+
+              setMessages((prev) => {
+                const updated = [...prev];
+
+                updated[updated.length - 1] = {
+                  ...updated[updated.length - 1],
+                  sources,
+                };
+
+                return updated;
+              });
+            } catch (err) {
+              console.error(err);
+            }
+
+            continue;
+          }
+
+          // ===========================
+          // RETRIEVED CHUNKS
+          // (Future ready)
+          // ===========================
+
+          if (eventName === "chunks") {
+            try {
+              const chunks: RetrievedChunk[] =
+                JSON.parse(payload);
+
+              setMessages((prev) => {
+                const updated = [...prev];
+
+                updated[updated.length - 1] = {
+                  ...updated[updated.length - 1],
+                  retrievedChunks: chunks,
+                };
+
+                return updated;
+              });
+            } catch (err) {
+              console.error(err);
+            }
+
+            continue;
+          }
+
+          // ===========================
+          // NORMAL TOKEN
+          // ===========================
 
           try {
             const parsed = JSON.parse(payload);
@@ -165,21 +251,21 @@ export default function Chat({
               const updated = [...prev];
 
               updated[updated.length - 1] = {
-                role: "ai",
+                ...updated[updated.length - 1],
                 text: aiText,
               };
 
               return updated;
             });
           } catch (err) {
-            console.error("Stream parse error:", err);
+            console.error(err);
           }
         }
       }
 
       onConversationUpdated();
     } catch (error) {
-      console.error("Streaming error:", error);
+      console.error(error);
 
       setMessages((prev) => {
         const updated = [...prev];
@@ -197,18 +283,17 @@ export default function Chat({
     }
   }
 
-  // ===========================
-  // UI
-  // ===========================
   return (
-    <section className="flex h-full flex-col p-6">
-      <h2 className="mb-6 text-4xl font-bold">
+    <section className="flex flex-1 h-full min-h-0 flex-col overflow-hidden p-6">
+      <h2 className="mb-6 shrink-0 text-4xl font-bold">
         Chat with MindWeave
       </h2>
 
-      <div className="flex flex-1 flex-col rounded-2xl border border-zinc-800 bg-zinc-900">
-        {/* Messages */}
-        <div className="flex-1 space-y-4 overflow-y-auto p-6 min-h-0">
+      <div className="flex flex-1 min-h-0 flex-col overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-900">
+        <div
+          className="flex-1 overflow-y-auto space-y-4 p-6"
+          style={{ minHeight: 0 }}
+        >
           {messages.length === 0 && (
             <div className="flex h-full items-center justify-center text-zinc-500">
               {conversationId
@@ -222,6 +307,8 @@ export default function Chat({
               key={index}
               role={msg.role}
               text={msg.text}
+              sources={msg.sources}
+              retrievedChunks={msg.retrievedChunks}
             />
           ))}
 
@@ -230,42 +317,36 @@ export default function Chat({
           <div ref={bottomRef} />
         </div>
 
-        {/* Input */}
-        <div className="flex gap-3 border-t border-zinc-800 p-4">
-          <textarea
-            ref={inputRef}
-            rows={1}
-            value={input}
-            onChange={(e) =>
-              setInput(e.target.value)
-            }
-            onKeyDown={(e) => {
-              if (
-                e.key === "Enter" &&
-                !e.shiftKey
-              ) {
-                e.preventDefault();
-                sendMessage();
+        <div className="shrink-0 border-t border-zinc-800 bg-zinc-900 p-4">
+          <div className="flex gap-3">
+            <textarea
+              ref={inputRef}
+              rows={1}
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !e.shiftKey) {
+                  e.preventDefault();
+                  sendMessage();
+                }
+              }}
+              disabled={!conversationId || loading}
+              placeholder={
+                conversationId
+                  ? "Ask anything..."
+                  : "Create a chat first"
               }
-            }}
-            disabled={!conversationId || loading}
-            placeholder={
-              conversationId
-                ? "Ask anything..."
-                : "Create a chat first"
-            }
-            className="max-h-48 flex-1 resize-none overflow-y-auto rounded-xl bg-zinc-950 p-3 text-white outline-none disabled:opacity-50"
-          />
+              className="flex-1 max-h-48 resize-none overflow-y-auto rounded-xl bg-zinc-950 p-3 text-white outline-none disabled:opacity-50"
+            />
 
-          <button
-            onClick={sendMessage}
-            disabled={
-              !conversationId || loading
-            }
-            className="rounded-xl bg-cyan-500 px-6 py-3 font-semibold text-black transition hover:bg-cyan-400 disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            {loading ? "Thinking..." : "Send"}
-          </button>
+            <button
+              onClick={sendMessage}
+              disabled={!conversationId || loading}
+              className="rounded-xl bg-cyan-500 px-6 py-3 font-semibold text-black transition hover:bg-cyan-400 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {loading ? "Thinking..." : "Send"}
+            </button>
+          </div>
         </div>
       </div>
     </section>

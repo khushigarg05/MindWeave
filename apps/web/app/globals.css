@@ -197,3 +197,8 @@
   color: #22d3ee;
   text-decoration: underline;
 }
+html,
+body {
+  height: auto;
+  overflow-y: auto;
+}
