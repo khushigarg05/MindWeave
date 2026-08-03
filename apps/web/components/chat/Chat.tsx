@@ -61,10 +61,12 @@ export default function Chat({
         }
 
         const chatMessages: Message[] =
-          data.data?.messages?.map((msg: any) => ({
-            role: msg.role === "assistant" ? "ai" : "user",
-            text: msg.content,
-          })) ?? [];
+        data.data?.messages?.map((msg: any) => ({
+          role: msg.role === "assistant" ? "ai" : "user",
+          text: msg.content,
+          sources: msg.sources ?? [],
+          retrievedChunks: msg.retrievedChunks ?? [],
+        })) ?? [];
 
         setMessages(chatMessages);
       } catch (error) {
@@ -273,6 +275,8 @@ export default function Chat({
         updated[updated.length - 1] = {
           role: "ai",
           text: "Something went wrong. Please try again.",
+          sources: [],
+          retrievedChunks: [],
         };
 
         return updated;

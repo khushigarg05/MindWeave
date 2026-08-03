@@ -3,6 +3,10 @@ import Conversation from "../models/conversation.model";
 import { generateResponse } from "../services/ai/ai.service";
 import { buildConversationContext } from "../services/chat/history.service";
 
+// ===================================================
+// NORMAL CHAT
+// ===================================================
+
 export async function chat(
   req: Request,
   res: Response
@@ -36,27 +40,36 @@ export async function chat(
     }
 
     // ===========================
-    // Build conversation history
+    // Build History
     // ===========================
+
     const history = buildConversationContext(
       conversation.messages
     );
 
     // ===========================
-    // Generate response
+    // Generate AI Response
     // ===========================
+
     const response = await generateResponse(
       message,
       history
     );
 
-    // Auto rename first conversation
+    // ===========================
+    // Rename first chat
+    // ===========================
+
     if (conversation.title === "New Chat") {
       conversation.title =
         message.length > 40
           ? message.substring(0, 40) + "..."
           : message;
     }
+
+    // ===========================
+    // Save Messages
+    // ===========================
 
     conversation.messages.push(
       {
@@ -66,6 +79,9 @@ export async function chat(
       {
         role: "assistant",
         content: response.aiResponse,
+        sources: response.sources ?? [],
+        retrievedChunks:
+          response.retrievedChunks ?? [],
       }
     );
 
@@ -78,13 +94,9 @@ export async function chat(
       data: {
         conversationId: conversation._id,
         title: conversation.title,
-
         aiResponse: response.aiResponse,
-
         sources: response.sources,
-
-        retrievedChunks:
-          response.retrievedChunks,
+        retrievedChunks: response.retrievedChunks,
       },
     });
   } catch (error) {
@@ -98,7 +110,7 @@ export async function chat(
 }
 
 // ===================================================
-// STREAMING ENDPOINT
+// STREAMING CHAT
 // ===================================================
 
 export async function streamChat(
@@ -115,6 +127,13 @@ export async function streamChat(
       });
     }
 
+    if (!message?.trim()) {
+      return res.status(400).json({
+        success: false,
+        message: "Message is required",
+      });
+    }
+
     const conversation =
       await Conversation.findById(
         conversationId
@@ -128,20 +147,26 @@ export async function streamChat(
     }
 
     // ===========================
-    // Build history
+    // Build History
     // ===========================
+
     const history = buildConversationContext(
       conversation.messages
     );
 
     // ===========================
-    // Generate response
+    // Generate AI Response
     // ===========================
+
     const response =
       await generateResponse(
         message,
         history
       );
+
+    // ===========================
+    // Rename First Chat
+    // ===========================
 
     if (conversation.title === "New Chat") {
       conversation.title =
@@ -149,6 +174,10 @@ export async function streamChat(
           ? message.substring(0, 40) + "..."
           : message;
     }
+
+    // ===========================
+    // Save Messages
+    // ===========================
 
     conversation.messages.push(
       {
@@ -158,6 +187,9 @@ export async function streamChat(
       {
         role: "assistant",
         content: response.aiResponse,
+        sources: response.sources ?? [],
+        retrievedChunks:
+          response.retrievedChunks ?? [],
       }
     );
 
@@ -165,21 +197,30 @@ export async function streamChat(
 
     await conversation.save();
 
-    // SSE Headers
+    // ===========================
+    // SSE HEADERS
+    // ===========================
+
     res.setHeader(
       "Content-Type",
       "text/event-stream"
     );
+
     res.setHeader(
       "Cache-Control",
       "no-cache"
     );
+
     res.setHeader(
       "Connection",
       "keep-alive"
     );
 
     res.flushHeaders();
+
+    // ===========================
+    // Stream AI Tokens
+    // ===========================
 
     const words =
       response.aiResponse.split(" ");
@@ -196,13 +237,31 @@ export async function streamChat(
       );
     }
 
-    // Send sources after streaming
+    // ===========================
+    // Stream Sources
+    // ===========================
+
     res.write("event: sources\n");
     res.write(
       `data: ${JSON.stringify(
-        response.sources
+        response.sources ?? []
       )}\n\n`
     );
+
+    // ===========================
+    // Stream Retrieved Chunks
+    // ===========================
+
+    res.write("event: chunks\n");
+    res.write(
+      `data: ${JSON.stringify(
+        response.retrievedChunks ?? []
+      )}\n\n`
+    );
+
+    // ===========================
+    // Finish Stream
+    // ===========================
 
     res.write("event: end\n");
     res.write("data: done\n\n");
@@ -221,6 +280,10 @@ export async function streamChat(
     res.end();
   }
 }
+
+// ===================================================
+// CONVERSATION HISTORY
+// ===================================================
 
 export async function history(
   req: Request,
