@@ -62,3 +62,39 @@ export async function getConversation(
     });
   }
 }
+// =======================================================
+// Delete Conversation
+// =======================================================
+
+export async function deleteConversation(
+  req: Request,
+  res: Response
+) {
+  try {
+    const { id } = req.params;
+
+    const conversation =
+      await Conversation.findById(id);
+
+    if (!conversation) {
+      return res.status(404).json({
+        success: false,
+        message: "Conversation not found",
+      });
+    }
+
+    await Conversation.findByIdAndDelete(id);
+
+    return res.json({
+      success: true,
+      message: "Conversation deleted successfully",
+    });
+  } catch (err) {
+    console.error(err);
+
+    return res.status(500).json({
+      success: false,
+      message: "Failed to delete conversation",
+    });
+  }
+}

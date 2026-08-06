@@ -11,13 +11,15 @@ export async function generateResponse(
 ) {
   try {
     // ===========================
-    // Retrieve relevant chunks
+    // Retrieve Relevant Chunks
     // ===========================
+
     const matches = await searchRelevantChunks(message);
 
-    // ======================================================
-    // No relevant document found -> Normal AI conversation
-    // ======================================================
+    // =====================================================
+    // No document match -> Normal conversation
+    // =====================================================
+
     if (matches.length === 0) {
       const completion =
         await groq.chat.completions.create({
@@ -27,16 +29,16 @@ export async function generateResponse(
             {
               role: "system",
               content:
-                "You are MindWeave AI, a helpful AI assistant. Continue the conversation naturally using the previous conversation when relevant.",
+                "You are MindWeave AI, a helpful AI assistant. Continue conversations naturally.",
             },
             {
               role: "user",
               content: `
-Previous Conversation:
+Previous Conversation
 
 ${history}
 
-Current User Message:
+Current User Message
 
 ${message}
 `,
@@ -49,6 +51,7 @@ ${message}
 
       return {
         success: true,
+
         userMessage: message,
 
         aiResponse:
@@ -61,39 +64,77 @@ ${message}
       };
     }
 
-    // ===========================
-    // Build Context
-    // ===========================
-    const context = matches
-      .map((chunk) => chunk.text)
-      .join("\n\n");
+    // =====================================================
+    // Number retrieved chunks
+    // =====================================================
 
-    // ===========================
-    // RAG Prompt
-    // ===========================
+    const numberedChunks = matches.map(
+      (chunk, index) => ({
+        id: index + 1,
+        filename: chunk.filename,
+        score: Number(chunk.score.toFixed(3)),
+        text: chunk.text,
+      })
+    );
+
+    // =====================================================
+    // Build Context
+    // =====================================================
+
+    const context = numberedChunks
+      .map(
+        (chunk) => `
+[${chunk.id}]
+Document : ${chunk.filename}
+
+${chunk.text}
+`
+      )
+      .join("\n\n-----------------------------\n\n");
+
+    // =====================================================
+    // Prompt
+    // =====================================================
+
     const prompt = `
 You are MindWeave AI.
 
-You are given:
+You are provided with:
 
 1. Previous conversation
-2. Retrieved document context
+2. Retrieved document chunks
 
-Always use the retrieved context as the primary source of truth.
+The retrieved chunks are the ONLY source of truth.
 
-Conversation history helps you understand follow-up questions.
+Each chunk has an ID like:
+
+[1]
+[2]
+[3]
+
+Whenever you use information from a chunk, cite it inline.
+
+Example:
+
+Employees are entitled to 12 casual leaves per year [1].
 
 Rules:
 
-- Answer ONLY using the retrieved context.
+- Use ONLY retrieved context.
 - Never hallucinate.
 - Never invent facts.
 - Never use outside knowledge.
-- If the answer isn't present in the context, reply exactly:
+- If multiple chunks support an answer, cite all of them.
+- Answer in markdown.
+- Use headings and bullet points.
+- Keep answers concise.
+- Never mention "retrieved context".
+- Never say "according to chunk".
+- Only use citations like [1], [2].
+
+If the answer is not found, reply exactly:
 
 "I couldn't find that information in the uploaded documents."
-
-Use concise bullet points whenever appropriate.
 
 =========================
 PREVIOUS CONVERSATION
@@ -108,7 +149,7 @@ RETRIEVED CONTEXT
 ${context}
 
 =========================
-CURRENT QUESTION
+QUESTION
 =========================
 
 ${message}
@@ -118,9 +159,10 @@ ANSWER
 =========================
 `;
 
-    // ===========================
-    // Groq
-    // ===========================
+    // =====================================================
+    // LLM
+    // =====================================================
+
     const completion =
       await groq.chat.completions.create({
         model: "llama-3.3-70b-versatile",
@@ -132,20 +174,21 @@ ANSWER
           },
         ],
 
-        temperature: 0.2,
+        temperature: 0.1,
         max_tokens: 1024,
       });
 
-    // ===========================
+    // =====================================================
     // Unique Sources
-    // ===========================
+    // =====================================================
+
     const sources = Array.from(
       new Map(
-        matches.map((chunk) => [
+        numberedChunks.map((chunk) => [
           chunk.filename,
           {
             filename: chunk.filename,
-            score: Number(chunk.score.toFixed(3)),
+            score: chunk.score,
           },
         ])
       ).values()
@@ -153,13 +196,14 @@ ANSWER
 
     return {
       success: true,
+
       userMessage: message,
 
       aiResponse:
         completion.choices[0]?.message?.content ??
         "No response generated.",
 
-      retrievedChunks: matches,
+      retrievedChunks: numberedChunks,
 
       sources,
     };
@@ -168,6 +212,7 @@ ANSWER
 
     return {
       success: false,
+
       userMessage: message,
 
       aiResponse:

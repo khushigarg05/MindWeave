@@ -28,9 +28,8 @@ export async function chat(
       });
     }
 
-    const conversation = await Conversation.findById(
-      conversationId
-    );
+    const conversation =
+      await Conversation.findById(conversationId);
 
     if (!conversation) {
       return res.status(404).json({
@@ -40,7 +39,7 @@ export async function chat(
     }
 
     // ===========================
-    // Build History
+    // Build conversation history
     // ===========================
 
     const history = buildConversationContext(
@@ -57,7 +56,7 @@ export async function chat(
     );
 
     // ===========================
-    // Rename first chat
+    // Auto Rename
     // ===========================
 
     if (conversation.title === "New Chat") {
@@ -68,7 +67,7 @@ export async function chat(
     }
 
     // ===========================
-    // Save Messages
+    // Save Conversation
     // ===========================
 
     conversation.messages.push(
@@ -95,12 +94,13 @@ export async function chat(
         conversationId: conversation._id,
         title: conversation.title,
         aiResponse: response.aiResponse,
-        sources: response.sources,
-        retrievedChunks: response.retrievedChunks,
+        sources: response.sources ?? [],
+        retrievedChunks:
+          response.retrievedChunks ?? [],
       },
     });
   } catch (error) {
-    console.error(error);
+    console.error("Chat Error:", error);
 
     return res.status(500).json({
       success: false,
@@ -150,12 +150,13 @@ export async function streamChat(
     // Build History
     // ===========================
 
-    const history = buildConversationContext(
-      conversation.messages
-    );
+    const history =
+      buildConversationContext(
+        conversation.messages
+      );
 
     // ===========================
-    // Generate AI Response
+    // Generate AI
     // ===========================
 
     const response =
@@ -176,7 +177,7 @@ export async function streamChat(
     }
 
     // ===========================
-    // Save Messages
+    // Save Conversation
     // ===========================
 
     conversation.messages.push(
@@ -198,7 +199,7 @@ export async function streamChat(
     await conversation.save();
 
     // ===========================
-    // SSE HEADERS
+    // SSE Headers
     // ===========================
 
     res.setHeader(
@@ -233,12 +234,12 @@ export async function streamChat(
       );
 
       await new Promise((resolve) =>
-        setTimeout(resolve, 35)
+        setTimeout(resolve, 25)
       );
     }
 
     // ===========================
-    // Stream Sources
+    // Sources
     // ===========================
 
     res.write("event: sources\n");
@@ -249,7 +250,7 @@ export async function streamChat(
     );
 
     // ===========================
-    // Stream Retrieved Chunks
+    // Retrieved Chunks
     // ===========================
 
     res.write("event: chunks\n");
@@ -260,7 +261,7 @@ export async function streamChat(
     );
 
     // ===========================
-    // Finish Stream
+    // Stream End
     // ===========================
 
     res.write("event: end\n");
@@ -268,7 +269,10 @@ export async function streamChat(
 
     res.end();
   } catch (error) {
-    console.error(error);
+    console.error(
+      "Streaming Error:",
+      error
+    );
 
     if (!res.headersSent) {
       return res.status(500).json({
@@ -282,7 +286,7 @@ export async function streamChat(
 }
 
 // ===================================================
-// CONVERSATION HISTORY
+// Conversation History
 // ===================================================
 
 export async function history(

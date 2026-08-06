@@ -61,16 +61,16 @@ export default function Chat({
         }
 
         const chatMessages: Message[] =
-        data.data?.messages?.map((msg: any) => ({
-          role: msg.role === "assistant" ? "ai" : "user",
-          text: msg.content,
-          sources: msg.sources ?? [],
-          retrievedChunks: msg.retrievedChunks ?? [],
-        })) ?? [];
+          data.data?.messages?.map((msg: any) => ({
+            role: msg.role === "assistant" ? "ai" : "user",
+            text: msg.content,
+            sources: msg.sources ?? [],
+            retrievedChunks: msg.retrievedChunks ?? [],
+          })) ?? [];
 
         setMessages(chatMessages);
-      } catch (error) {
-        console.error(error);
+      } catch (err) {
+        console.error(err);
         setMessages([]);
       }
     }
@@ -118,6 +118,8 @@ export default function Chat({
       {
         role: "ai",
         text: "",
+        sources: [],
+        retrievedChunks: [],
       },
     ]);
 
@@ -140,7 +142,7 @@ export default function Chat({
       );
 
       if (!res.ok || !res.body) {
-        throw new Error("Failed to start stream");
+        throw new Error("Unable to start stream.");
       }
 
       const reader = res.body.getReader();
@@ -165,7 +167,8 @@ export default function Chat({
           const lines = event.split("\n");
 
           const eventName =
-            lines.find((l) => l.startsWith("event:"))
+            lines
+              .find((l) => l.startsWith("event:"))
               ?.replace("event:", "")
               .trim() ?? "message";
 
@@ -215,7 +218,6 @@ export default function Chat({
 
           // ===========================
           // RETRIEVED CHUNKS
-          // (Future ready)
           // ===========================
 
           if (eventName === "chunks") {
@@ -241,7 +243,7 @@ export default function Chat({
           }
 
           // ===========================
-          // NORMAL TOKEN
+          // AI TOKENS
           // ===========================
 
           try {
@@ -266,8 +268,8 @@ export default function Chat({
       }
 
       onConversationUpdated();
-    } catch (error) {
-      console.error(error);
+    } catch (err) {
+      console.error(err);
 
       setMessages((prev) => {
         const updated = [...prev];
@@ -294,6 +296,9 @@ export default function Chat({
       </h2>
 
       <div className="flex flex-1 min-h-0 flex-col overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-900">
+
+        {/* ================= Messages ================= */}
+
         <div
           className="flex-1 overflow-y-auto space-y-4 p-6"
           style={{ minHeight: 0 }}
@@ -302,7 +307,7 @@ export default function Chat({
             <div className="flex h-full items-center justify-center text-zinc-500">
               {conversationId
                 ? "Start a conversation..."
-                : "Create a new chat first"}
+                : "Create a chat first"}
             </div>
           )}
 
@@ -321,15 +326,21 @@ export default function Chat({
           <div ref={bottomRef} />
         </div>
 
+        {/* ================= Input ================= */}
+
         <div className="shrink-0 border-t border-zinc-800 bg-zinc-900 p-4">
           <div className="flex gap-3">
+
             <textarea
               ref={inputRef}
               rows={1}
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => {
-                if (e.key === "Enter" && !e.shiftKey) {
+                if (
+                  e.key === "Enter" &&
+                  !e.shiftKey
+                ) {
                   e.preventDefault();
                   sendMessage();
                 }
@@ -350,8 +361,10 @@ export default function Chat({
             >
               {loading ? "Thinking..." : "Send"}
             </button>
+
           </div>
         </div>
+
       </div>
     </section>
   );

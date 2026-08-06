@@ -15,17 +15,31 @@ export async function createCollection() {
     (c) => c.name === collectionName
   );
 
-  if (exists) {
+  if (!exists) {
+    await qdrant.createCollection(collectionName, {
+      vectors: {
+        size: 384,
+        distance: "Cosine",
+      },
+    });
+
+    console.log("✅ Qdrant Collection Created");
+  } else {
     console.log("✅ Collection already exists");
-    return;
   }
 
-  await qdrant.createCollection(collectionName, {
-    vectors: {
-      size: 384,
-      distance: "Cosine",
-    },
-  });
+  // ==========================================
+  // Create payload index for filename
+  // ==========================================
 
-  console.log("✅ Qdrant Collection Created");
+  try {
+    await qdrant.createPayloadIndex(collectionName, {
+      field_name: "filename",
+      field_schema: "keyword",
+    });
+
+    console.log("✅ Filename payload index ready");
+  } catch (err: any) {
+    console.log("ℹ️ Payload index already exists");
+  }
 }
