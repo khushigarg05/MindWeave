@@ -1,14 +1,33 @@
 import { generateEmbedding } from "./embedding.service";
 import { qdrant } from "./qdrant.service";
 
-// Temporarily disable filtering for debugging
-const SIMILARITY_THRESHOLD = 0.35;
+// ======================================================
+// Similarity Threshold
+// ======================================================
 
-export async function searchRelevantChunks(query: string) {
+// Qdrant cosine similarity:
+// Higher score = more relevant.
+//
+// 0.45 is a reasonable starting point.
+// We can tune this after testing more questions.
+
+const SIMILARITY_THRESHOLD = 0.45;
+
+
+// ======================================================
+// Search Relevant Chunks
+// ======================================================
+
+export async function searchRelevantChunks(
+  query: string
+) {
+
   // ===========================
-  // Generate query embedding
+  // Generate Query Embedding
   // ===========================
-  const embedding = await generateEmbedding(query);
+
+  const embedding =
+    await generateEmbedding(query);
 
   console.log("====================================");
   console.log("SEARCH QUERY");
@@ -16,47 +35,146 @@ export async function searchRelevantChunks(query: string) {
   console.log("Embedding Dimension:", embedding.length);
   console.log("====================================");
 
+
   // ===========================
   // Search Qdrant
   // ===========================
-  const result = await qdrant.search("mindweave", {
-    vector: embedding,
-    limit: 5,
-    with_payload: true,
-  });
+
+  const result =
+    await qdrant.search("mindweave", {
+      vector: embedding,
+      limit: 10,
+      with_payload: true,
+    });
+
 
   // ===========================
-  // Print raw search results
+  // Print Raw Results
   // ===========================
-  console.log("========== RAW SEARCH RESULTS ==========");
+
+  console.log(
+    "========== RAW SEARCH RESULTS =========="
+  );
+
 
   if (result.length === 0) {
-    console.log("❌ Qdrant returned 0 results");
+
+    console.log(
+      "❌ Qdrant returned 0 results"
+    );
+
   } else {
-    result.forEach((point: any, index: number) => {
-      console.log({
-        rank: index + 1,
-        score: point.score,
-        filename: point.payload?.filename,
-      });
-    });
+
+    result.forEach(
+      (point: any, index: number) => {
+
+        console.log({
+          rank: index + 1,
+          score: point.score,
+          filename:
+            point.payload?.filename,
+        });
+
+      }
+    );
+
   }
 
-  console.log("========================================");
+
+  console.log(
+    "========================================"
+  );
+
 
   // ======================================================
-  // DEBUG:
-  // Return ALL results (no threshold filtering)
+  // Filter Weak Results
   // ======================================================
-  const filtered = result;
 
-  // Sort highest score first
-  filtered.sort((a: any, b: any) => b.score - a.score);
+  const filtered =
+    result.filter(
+      (point: any) =>
+        Number(point.score) >=
+        SIMILARITY_THRESHOLD
+    );
 
-  return filtered.map((point: any) => ({
-    score: point.score,
-    text: point.payload?.text ?? "",
-    source: point.payload?.source ?? "",
-    filename: point.payload?.filename ?? "Unknown",
-  }));
+
+  // ======================================================
+  // Sort Highest Score First
+  // ======================================================
+
+  filtered.sort(
+    (a: any, b: any) =>
+      b.score - a.score
+  );
+
+
+  // ======================================================
+  // Keep Maximum 5 Results
+  // ======================================================
+
+  const topResults =
+    filtered.slice(0, 5);
+
+
+  // ======================================================
+  // Print Filtered Results
+  // ======================================================
+
+  console.log(
+    "========== FILTERED RESULTS =========="
+  );
+
+  if (topResults.length === 0) {
+
+    console.log(
+      "❌ No results passed similarity threshold"
+    );
+
+  } else {
+
+    topResults.forEach(
+      (point: any, index: number) => {
+
+        console.log({
+          rank: index + 1,
+          score: Number(
+            Number(point.score).toFixed(4)
+          ),
+          filename:
+            point.payload?.filename,
+        });
+
+      }
+    );
+
+  }
+
+  console.log(
+    "======================================="
+  );
+
+
+  // ======================================================
+  // Return Results
+  // ======================================================
+
+  return topResults.map(
+    (point: any) => ({
+
+      score: Number(
+        Number(point.score).toFixed(4)
+      ),
+
+      text:
+        point.payload?.text ?? "",
+
+      source:
+        point.payload?.source ?? "",
+
+      filename:
+        point.payload?.filename ??
+        "Unknown",
+
+    })
+  );
 }

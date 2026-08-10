@@ -6,6 +6,7 @@ import Document from "../models/document.model";
 
 import { extractPdfText } from "../services/rag/pdf.service";
 import { splitIntoChunks } from "../services/rag/chunk.service";
+
 import {
   storeChunks,
   deleteVectorsByFilename,
@@ -40,7 +41,23 @@ export async function uploadDocument(
     console.log("====================================");
     console.log("PDF TEXT EXTRACTED");
     console.log("====================================");
-    console.log(`Characters: ${text.length}`);
+    console.log("File:", req.file.originalname);
+    console.log("Characters:", text.length);
+
+    // ===========================
+    // Validate extracted text
+    // ===========================
+
+    if (!text || text.trim().length === 0) {
+      if (fs.existsSync(req.file.path)) {
+        fs.unlinkSync(req.file.path);
+      }
+
+      return res.status(400).json({
+        success: false,
+        message: "Could not extract text from PDF",
+      });
+    }
 
     // ===========================
     // Split into Chunks
@@ -49,15 +66,27 @@ export async function uploadDocument(
     const chunks = await splitIntoChunks(text);
 
     console.log("====================================");
-    console.log(`TOTAL CHUNKS: ${chunks.length}`);
+    console.log("TEXT CHUNKING");
     console.log("====================================");
+    console.log("Total chunks:", chunks.length);
+
+    if (chunks.length === 0) {
+      if (fs.existsSync(req.file.path)) {
+        fs.unlinkSync(req.file.path);
+      }
+
+      return res.status(400).json({
+        success: false,
+        message: "No text chunks were generated from PDF",
+      });
+    }
 
     // ===========================
     // Store Embeddings
     // ===========================
 
     console.log("====================================");
-    console.log("GENERATING EMBEDDINGS & STORING...");
+    console.log("GENERATING EMBEDDINGS & STORING");
     console.log("====================================");
 
     await storeChunks(
@@ -82,8 +111,8 @@ export async function uploadDocument(
 
     console.log("====================================");
     console.log("DOCUMENT METADATA SAVED");
-    console.log(document._id);
     console.log("====================================");
+    console.log("Document ID:", document._id);
 
     // ===========================
     // Response
@@ -103,7 +132,9 @@ export async function uploadDocument(
       },
 
       characters: text.length,
+
       totalChunks: chunks.length,
+
       storedChunks: chunks.length,
 
       preview:
@@ -112,11 +143,27 @@ export async function uploadDocument(
           : "",
     });
   } catch (err) {
-    console.error("Upload Error:", err);
+    console.error("====================================");
+    console.error("UPLOAD ERROR");
+    console.error("====================================");
+    console.error(err);
 
-    // Remove uploaded file if processing fails
-    if (req.file?.path && fs.existsSync(req.file.path)) {
-      fs.unlinkSync(req.file.path);
+    // ===========================
+    // Remove uploaded file
+    // ===========================
+
+    if (
+      req.file?.path &&
+      fs.existsSync(req.file.path)
+    ) {
+      try {
+        fs.unlinkSync(req.file.path);
+      } catch (deleteError) {
+        console.error(
+          "Failed to remove uploaded file:",
+          deleteError
+        );
+      }
     }
 
     return res.status(500).json({
@@ -148,7 +195,10 @@ export async function getDocuments(
       data: documents,
     });
   } catch (err) {
-    console.error(err);
+    console.error(
+      "Get Documents Error:",
+      err
+    );
 
     return res.status(500).json({
       success: false,
@@ -168,7 +218,12 @@ export async function deleteDocument(
   try {
     const { id } = req.params;
 
-    const document = await Document.findById(id);
+    // ===========================
+    // Find document
+    // ===========================
+
+    const document =
+      await Document.findById(id);
 
     if (!document) {
       return res.status(404).json({
@@ -177,12 +232,28 @@ export async function deleteDocument(
       });
     }
 
+    console.log("====================================");
+    console.log("DELETING DOCUMENT");
+    console.log("====================================");
+    console.log(
+      "Filename:",
+      document.originalName
+    );
+
     // ===========================
     // Delete vectors from Qdrant
     // ===========================
 
+    console.log(
+      "Deleting vectors from Qdrant..."
+    );
+
     await deleteVectorsByFilename(
       document.originalName
+    );
+
+    console.log(
+      "Qdrant vectors deleted"
     );
 
     // ===========================
@@ -197,6 +268,11 @@ export async function deleteDocument(
 
     if (fs.existsSync(filePath)) {
       fs.unlinkSync(filePath);
+
+      console.log(
+        "PDF file deleted:",
+        filePath
+      );
     }
 
     // ===========================
@@ -205,12 +281,21 @@ export async function deleteDocument(
 
     await Document.findByIdAndDelete(id);
 
+    console.log(
+      "MongoDB document deleted"
+    );
+
+    console.log("====================================");
+
     return res.json({
       success: true,
       message: "Document deleted successfully",
     });
   } catch (err) {
-    console.error(err);
+    console.error(
+      "Delete Document Error:",
+      err
+    );
 
     return res.status(500).json({
       success: false,

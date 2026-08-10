@@ -32,11 +32,11 @@ router.get(
 
 // ========================================
 // Delete Document
-// DELETE /upload/:id
+// DELETE /upload/documents/:id
 // ========================================
 
 router.delete(
-  "/:id",
+  "/documents/:id",
   deleteDocument
 );
 

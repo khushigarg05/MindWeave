@@ -39,21 +39,23 @@ export async function chat(
     }
 
     // ===========================
-    // Build conversation history
+    // Build Conversation History
     // ===========================
 
-    const history = buildConversationContext(
-      conversation.messages
-    );
+    const history =
+      buildConversationContext(
+        conversation.messages
+      );
 
     // ===========================
     // Generate AI Response
     // ===========================
 
-    const response = await generateResponse(
-      message,
-      history
-    );
+    const response =
+      await generateResponse(
+        message,
+        history
+      );
 
     // ===========================
     // Auto Rename
@@ -91,16 +93,27 @@ export async function chat(
     return res.json({
       success: true,
       data: {
-        conversationId: conversation._id,
-        title: conversation.title,
-        aiResponse: response.aiResponse,
-        sources: response.sources ?? [],
+        conversationId:
+          conversation._id,
+
+        title:
+          conversation.title,
+
+        aiResponse:
+          response.aiResponse,
+
+        sources:
+          response.sources ?? [],
+
         retrievedChunks:
           response.retrievedChunks ?? [],
       },
     });
   } catch (error) {
-    console.error("Chat Error:", error);
+    console.error(
+      "Chat Error:",
+      error
+    );
 
     return res.status(500).json({
       success: false,
@@ -118,7 +131,12 @@ export async function streamChat(
   res: Response
 ) {
   try {
-    const { message, conversationId } = req.body;
+    const { message, conversationId } =
+      req.body;
+
+    // ===========================
+    // Validate Request
+    // ===========================
 
     if (!conversationId) {
       return res.status(400).json({
@@ -133,6 +151,10 @@ export async function streamChat(
         message: "Message is required",
       });
     }
+
+    // ===========================
+    // Find Conversation
+    // ===========================
 
     const conversation =
       await Conversation.findById(
@@ -156,7 +178,7 @@ export async function streamChat(
       );
 
     // ===========================
-    // Generate AI
+    // Generate AI Response
     // ===========================
 
     const response =
@@ -209,12 +231,17 @@ export async function streamChat(
 
     res.setHeader(
       "Cache-Control",
-      "no-cache"
+      "no-cache, no-transform"
     );
 
     res.setHeader(
       "Connection",
       "keep-alive"
+    );
+
+    res.setHeader(
+      "X-Accel-Buffering",
+      "no"
     );
 
     res.flushHeaders();
@@ -242,7 +269,10 @@ export async function streamChat(
     // Sources
     // ===========================
 
-    res.write("event: sources\n");
+    res.write(
+      "event: sources\n"
+    );
+
     res.write(
       `data: ${JSON.stringify(
         response.sources ?? []
@@ -253,7 +283,10 @@ export async function streamChat(
     // Retrieved Chunks
     // ===========================
 
-    res.write("event: chunks\n");
+    res.write(
+      "event: chunks\n"
+    );
+
     res.write(
       `data: ${JSON.stringify(
         response.retrievedChunks ?? []
@@ -264,8 +297,13 @@ export async function streamChat(
     // Stream End
     // ===========================
 
-    res.write("event: end\n");
-    res.write("data: done\n\n");
+    res.write(
+      "event: end\n"
+    );
+
+    res.write(
+      "data: done\n\n"
+    );
 
     res.end();
   } catch (error) {
@@ -304,7 +342,10 @@ export async function history(
       data: conversations,
     });
   } catch (error) {
-    console.error(error);
+    console.error(
+      "History Error:",
+      error
+    );
 
     return res.status(500).json({
       success: false,
