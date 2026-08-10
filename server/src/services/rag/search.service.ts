@@ -1,33 +1,22 @@
 import { generateEmbedding } from "./embedding.service";
 import { qdrant } from "./qdrant.service";
 
-// ======================================================
+// =======================================================
 // Similarity Threshold
-// ======================================================
-
-// Qdrant cosine similarity:
-// Higher score = more relevant.
-//
-// 0.45 is a reasonable starting point.
-// We can tune this after testing more questions.
+// =======================================================
 
 const SIMILARITY_THRESHOLD = 0.45;
 
-
-// ======================================================
+// =======================================================
 // Search Relevant Chunks
-// ======================================================
+// =======================================================
 
-export async function searchRelevantChunks(
-  query: string
-) {
-
+export async function searchRelevantChunks(query: string) {
   // ===========================
   // Generate Query Embedding
   // ===========================
 
-  const embedding =
-    await generateEmbedding(query);
+  const embedding = await generateEmbedding(query);
 
   console.log("====================================");
   console.log("SEARCH QUERY");
@@ -35,134 +24,120 @@ export async function searchRelevantChunks(
   console.log("Embedding Dimension:", embedding.length);
   console.log("====================================");
 
-
   // ===========================
   // Search Qdrant
   // ===========================
 
-  const result =
-    await qdrant.search("mindweave", {
-      vector: embedding,
-      limit: 10,
-      with_payload: true,
-    });
-
+  const result = await qdrant.search("mindweave", {
+    vector: embedding,
+    limit: 8,
+    with_payload: true,
+  });
 
   // ===========================
-  // Print Raw Results
+  // Raw Results
   // ===========================
 
-  console.log(
-    "========== RAW SEARCH RESULTS =========="
-  );
-
+  console.log("========== RAW SEARCH RESULTS ==========");
 
   if (result.length === 0) {
-
-    console.log(
-      "❌ Qdrant returned 0 results"
-    );
-
+    console.log("❌ Qdrant returned 0 results");
   } else {
-
-    result.forEach(
-      (point: any, index: number) => {
-
-        console.log({
-          rank: index + 1,
-          score: point.score,
-          filename:
-            point.payload?.filename,
-        });
-
-      }
-    );
-
+    result.forEach((point: any, index: number) => {
+      console.log({
+        rank: index + 1,
+        score: point.score,
+        filename: point.payload?.filename,
+      });
+    });
   }
 
+  console.log("========================================");
 
-  console.log(
-    "========================================"
+  // =======================================================
+  // Filter By Similarity
+  // =======================================================
+
+  const filtered = result.filter(
+    (point: any) =>
+      Number(point.score) >= SIMILARITY_THRESHOLD
   );
 
-
-  // ======================================================
-  // Filter Weak Results
-  // ======================================================
-
-  const filtered =
-    result.filter(
-      (point: any) =>
-        Number(point.score) >=
-        SIMILARITY_THRESHOLD
-    );
-
-
-  // ======================================================
+  // =======================================================
   // Sort Highest Score First
-  // ======================================================
+  // =======================================================
 
   filtered.sort(
     (a: any, b: any) =>
-      b.score - a.score
+      Number(b.score) - Number(a.score)
   );
 
+  // =======================================================
+  // Remove Exact Duplicate Chunks
+  // =======================================================
 
-  // ======================================================
-  // Keep Maximum 5 Results
-  // ======================================================
+  const uniqueChunks: any[] = [];
 
-  const topResults =
-    filtered.slice(0, 5);
+  const seenTexts = new Set<string>();
 
+  for (const point of filtered) {
+    const text =
+      point.payload?.text?.trim() ?? "";
 
-  // ======================================================
-  // Print Filtered Results
-  // ======================================================
+    if (!text) {
+      continue;
+    }
 
-  console.log(
-    "========== FILTERED RESULTS =========="
-  );
+    const normalizedText = text
+      .replace(/\s+/g, " ")
+      .toLowerCase();
 
-  if (topResults.length === 0) {
+    if (seenTexts.has(normalizedText)) {
+      continue;
+    }
 
-    console.log(
-      "❌ No results passed similarity threshold"
-    );
+    seenTexts.add(normalizedText);
 
-  } else {
-
-    topResults.forEach(
-      (point: any, index: number) => {
-
-        console.log({
-          rank: index + 1,
-          score: Number(
-            Number(point.score).toFixed(4)
-          ),
-          filename:
-            point.payload?.filename,
-        });
-
-      }
-    );
-
+    uniqueChunks.push(point);
   }
 
-  console.log(
-    "======================================="
+  // =======================================================
+  // Limit Final Results
+  // =======================================================
+
+  const finalResults =
+    uniqueChunks.slice(0, 5);
+
+  // =======================================================
+  // Final Debug Output
+  // =======================================================
+
+  console.log("========== FINAL RAG RESULTS ==========");
+
+  finalResults.forEach(
+    (point: any, index: number) => {
+      console.log(
+        `[${index + 1}] ${point.payload?.filename} | score: ${point.score}`
+      );
+
+      console.log(
+        point.payload?.text?.substring(0, 300)
+      );
+
+      console.log("------------------------------------");
+    }
   );
 
+  console.log("=======================================");
 
-  // ======================================================
+  // =======================================================
   // Return Results
-  // ======================================================
+  // =======================================================
 
-  return topResults.map(
+  return finalResults.map(
     (point: any) => ({
-
       score: Number(
-        Number(point.score).toFixed(4)
+        Number(point.score).toFixed(3)
       ),
 
       text:
@@ -174,7 +149,6 @@ export async function searchRelevantChunks(
       filename:
         point.payload?.filename ??
         "Unknown",
-
     })
   );
 }
