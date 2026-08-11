@@ -9,25 +9,90 @@ const groq = new Groq({
 // Remove unresolved template placeholders
 // =====================================================
 
-function cleanTemplatePlaceholders(text: string): string {
-  return text
-    .replace(
-      /\[[^\]]*\/[^\]]*\]/g,
-      ""
-    )
-    .replace(
-      /\[[^\]]*\]/g,
-      ""
-    )
-    .replace(
-      /[ \t]{2,}/g,
-      " "
-    )
-    .replace(
-      /\n[ \t]+/g,
-      "\n"
-    )
-    .trim();
+function cleanTemplatePlaceholders(
+  text: string
+): string {
+
+  return (
+    text
+
+      // =================================================
+      // Remove slash-separated placeholders
+      // Examples:
+      // [Business/ Business Casual/ Smart Casual/ Casual]
+      // [3/5/7] days
+      // [2/3] weeks
+      // =================================================
+
+      .replace(
+        /\[[^\]]*\/[^\]]*\]/g,
+        ""
+      )
+
+      // =================================================
+      // Remove remaining text placeholders
+      //
+      // IMPORTANT:
+      // Keep [1], [2], [3] because these are citations.
+      // =================================================
+
+      .replace(
+        /\[(?!\d+\])[^\]]+\]/g,
+        ""
+      )
+
+      // =================================================
+      // Remove common leftover punctuation
+      // =================================================
+
+      .replace(
+        /,\s*\./g,
+        "."
+      )
+
+      .replace(
+        /([.!?])\s*[,;:]+/g,
+        "$1"
+      )
+
+      // =================================================
+      // Remove spaces before punctuation
+      // =================================================
+
+      .replace(
+        /\s+([,.!?;:])/g,
+        "$1"
+      )
+
+      // =================================================
+      // Remove excessive spaces
+      // =================================================
+
+      .replace(
+        /[ \t]{2,}/g,
+        " "
+      )
+
+      // =================================================
+      // Remove spaces at beginning of lines
+      // =================================================
+
+      .replace(
+        /\n[ \t]+/g,
+        "\n"
+      )
+
+      // =================================================
+      // Remove excessive blank lines
+      // =================================================
+
+      .replace(
+        /\n{3,}/g,
+        "\n\n"
+      )
+
+      .trim()
+  );
 }
 
 // =====================================================
@@ -38,304 +103,496 @@ export async function generateResponse(
   message: string,
   history: string
 ) {
+
   try {
-    // =====================================================
+
+    // ===================================================
     // Retrieve Relevant Chunks
-    // =====================================================
+    // ===================================================
 
     const matches =
-      await searchRelevantChunks(message);
+      await searchRelevantChunks(
+        message
+      );
 
-    console.log("====================================");
-    console.log("RAG SEARCH");
-    console.log("Query:", message);
-    console.log("Matches:", matches.length);
-    console.log("====================================");
+    console.log(
+      "===================================="
+    );
 
-    // =====================================================
+    console.log(
+      "RAG SEARCH"
+    );
+
+    console.log(
+      "Query:",
+      message
+    );
+
+    console.log(
+      "Matches:",
+      matches.length
+    );
+
+    console.log(
+      "===================================="
+    );
+
+    // ===================================================
     // No Relevant Document Found
-    // =====================================================
+    // ===================================================
 
-    if (matches.length === 0) {
-      const completion =
-        await groq.chat.completions.create({
-          model: "llama-3.3-70b-versatile",
-
-          messages: [
-            {
-              role: "system",
-              content:
-                "You are MindWeave AI, a helpful AI assistant. Continue conversations naturally.",
-            },
-            {
-              role: "user",
-              content: `
-Previous Conversation:
-
-${history}
-
-Current User Message:
-
-${message}
-`,
-            },
-          ],
-
-          temperature: 0.7,
-          max_tokens: 1024,
-        });
+    if (
+      matches.length === 0
+    ) {
 
       return {
+
         success: true,
 
-        userMessage: message,
+        userMessage:
+          message,
 
         aiResponse:
-          completion.choices[0]?.message?.content ??
-          "No response generated.",
+          "I couldn't find that information in the uploaded documents.",
 
         retrievedChunks: [],
 
         sources: [],
+
       };
     }
 
-    // =====================================================
+    // ===================================================
     // Prepare Retrieved Chunks
-    // =====================================================
+    // ===================================================
 
-    const numberedChunks = matches.map(
-      (chunk, index) => ({
-        id: index + 1,
+    const numberedChunks =
+      matches.map(
+        (
+          chunk,
+          index
+        ) => ({
 
-        filename: chunk.filename,
+          id:
+            index + 1,
 
-        score: Number(
-          Number(chunk.score).toFixed(3)
-        ),
+          filename:
+            chunk.filename,
 
-        // IMPORTANT:
-        // Remove unresolved template placeholders
-        // before sending the context to the AI.
-        text: cleanTemplatePlaceholders(
-          chunk.text
-        ),
-      })
+          score:
+            Number(
+              Number(
+                chunk.score
+              ).toFixed(3)
+            ),
+
+          // Clean document text before:
+          // 1. Sending to Groq
+          // 2. Returning to frontend
+
+          text:
+            cleanTemplatePlaceholders(
+              chunk.text
+            ),
+
+        })
+      );
+
+    // ===================================================
+    // Remove Empty Chunks
+    // ===================================================
+
+    const validChunks =
+      numberedChunks.filter(
+        (chunk) =>
+          chunk.text.trim().length > 0
+      );
+
+    // ===================================================
+    // Debug Retrieved Chunks
+    // ===================================================
+
+    console.log(
+      "===================================="
     );
 
-    console.log("====================================");
-    console.log("RETRIEVED CHUNKS");
-    console.log("====================================");
+    console.log(
+      "RETRIEVED CHUNKS"
+    );
 
-    numberedChunks.forEach((chunk) => {
-      console.log(
-        `[${chunk.id}] ${chunk.filename} | score: ${chunk.score}`
-      );
+    console.log(
+      "===================================="
+    );
 
-      console.log(
-        chunk.text.substring(0, 300)
-      );
+    validChunks.forEach(
+      (chunk) => {
 
-      console.log("------------------------------------");
-    });
+        console.log(
+          `[${chunk.id}] ${chunk.filename} | score: ${chunk.score}`
+        );
 
-    // =====================================================
+        console.log(
+          chunk.text.substring(
+            0,
+            500
+          )
+        );
+
+        console.log(
+          "------------------------------------"
+        );
+
+      }
+    );
+
+    // ===================================================
     // Build Document Context
-    // =====================================================
+    // ===================================================
 
-    const context = numberedChunks
-      .map(
-        (chunk) => `
+    const context =
+      validChunks
+        .map(
+          (chunk) => `
 [${chunk.id}]
 SOURCE: ${chunk.filename}
 
 ${chunk.text}
 `
-      )
-      .join(
-        "\n\n====================================\n\n"
-      );
+        )
+        .join(
+          "\n\n====================================\n\n"
+        );
 
-    // =====================================================
+    // ===================================================
     // RAG Prompt
-    // =====================================================
+    // ===================================================
 
     const prompt = `
-You are MindWeave AI, an AI knowledge assistant.
+You are MindWeave AI, a document-based AI assistant.
 
-Answer the user's question using ONLY the uploaded
-document context below.
+Your job is to answer the user's question using ONLY
+the information contained in the uploaded document
+context below.
 
-IMPORTANT:
+IMPORTANT RULES:
 
-- Never use outside knowledge.
-- Never guess.
-- Never invent missing information.
-- Never select an option from a template.
-- Never reproduce unresolved template placeholders.
-- The document may contain incomplete template text.
-- If the exact value is missing, clearly say that it is
-  not specified in the uploaded document.
-- Use only confirmed information from the document.
-- Answer in clear Markdown.
-- Keep the answer concise.
-- Cite factual statements using [1], [2], [3], etc.
-- Do not mention chunks, embeddings, vectors, retrieval,
-  similarity search, or RAG internals.
+1. Use ONLY the uploaded document context.
 
-IMPORTANT PLACEHOLDER RULE:
+2. Do NOT use outside knowledge.
 
-The original document may contain text such as:
+3. Do NOT guess.
+
+4. Do NOT invent missing information.
+
+5. Do NOT treat incomplete document text as a confirmed value.
+
+6. If the exact answer is not present in the documents,
+   say:
+
+"I couldn't find that information in the uploaded documents."
+
+7. If the document discusses the topic but the exact
+   value is missing, clearly say that the exact value
+   is not specified.
+
+8. Prefer the most relevant source when multiple sources
+   contain information about the same question.
+
+9. Keep the answer concise and factual.
+
+10. Answer using Markdown.
+
+11. Cite factual statements using [1], [2], [3], etc.
+
+12. Do NOT mention:
+    - chunks
+    - embeddings
+    - vectors
+    - Qdrant
+    - similarity search
+    - RAG
+    - retrieval
+    - internal system details
+
+=====================================================
+IMPORTANT PLACEHOLDER RULE
+=====================================================
+
+The uploaded documents may contain unresolved
+template placeholders.
+
+Examples:
 
 [Business/ Business Casual/ Smart Casual/ Casual]
 
-or:
-
 [slacks/ loafers/ blouses/ boots]
 
-These are template placeholders.
+[3/5/7] days
 
-They are NOT actual information.
+[2/3] weeks
 
-Do NOT choose an option.
+These placeholders are NOT confirmed information.
 
-Do NOT reproduce them.
+NEVER:
 
-If such a placeholder was needed to answer the question,
+- choose one option
+- guess the intended option
+- reproduce the placeholder
+- treat the placeholder as an actual value
+
+If the answer depends on a missing placeholder value,
 say:
 
 "The exact value is not specified in the uploaded document."
 
-You can still explain the confirmed rules surrounding it.
+You may still explain confirmed information
+surrounding that missing value.
 
-For example, if the document says:
+=====================================================
+IMPORTANT CITATION RULE
+=====================================================
 
-"Our company's official dress code is [Business/ Business Casual/ Smart Casual/ Casual].
-However, employees who meet clients should conform to a more formal dress code.
-Employees should be clean and avoid unprofessional clothes."
+Use the source number provided before each document.
 
-Your answer should be similar to:
+For example:
 
-"### Employee Dress Code
+[1] = first retrieved source
+[2] = second retrieved source
+[3] = third retrieved source
 
-The uploaded handbook does not specify the exact dress-code
-category. However, employees who frequently meet clients or
-prospects are expected to follow a more formal dress code [1].
-Employees are also expected to be clean and avoid
-unprofessional clothing [1]."
+Every factual statement taken from the documents
+should include the appropriate citation.
 
-Do NOT output the placeholder.
+Example:
 
-Do NOT invent the missing dress-code category.
+### Overtime Pay
+
+Non-exempt employees are entitled to overtime pay
+of one and a half times their wage [1].
+
+Example:
+
+### Remote Working Policy
+
+The document states that office-based employees may
+work remotely for a maximum period per year, but the
+exact number is not specified in the uploaded document
+[1].
+
+Employees must submit remote-working requests in
+advance [1].
+
+DO NOT invent missing values.
+
+=====================================================
+CONVERSATION HISTORY
+=====================================================
 
 Previous Conversation:
 
 ${history}
 
-Uploaded Document Context:
+=====================================================
+UPLOADED DOCUMENT CONTEXT
+=====================================================
 
 ${context}
 
-Current User Question:
+=====================================================
+CURRENT USER QUESTION
+=====================================================
 
 ${message}
 
-Answer now.
+=====================================================
+ANSWER
+=====================================================
+
+Answer now using ONLY the uploaded document context.
+Use [1], [2], [3] citations for factual statements.
 `;
 
-    // =====================================================
+    // ===================================================
     // Generate AI Response
-    // =====================================================
+    // ===================================================
 
     const completion =
       await groq.chat.completions.create({
-        model: "llama-3.3-70b-versatile",
+
+        model:
+          "llama-3.3-70b-versatile",
 
         messages: [
+
           {
             role: "system",
+
             content:
-              "You are MindWeave AI. Answer strictly from the uploaded document context. Never guess, never invent missing values, and never output template placeholders.",
+              "You are MindWeave AI. Answer strictly from uploaded document context. Never guess, never invent missing values, never output unresolved template placeholders, and cite factual statements using [1], [2], [3].",
           },
+
           {
             role: "user",
-            content: prompt,
+
+            content:
+              prompt,
           },
+
         ],
 
         temperature: 0,
 
         max_tokens: 1024,
+
       });
 
+    // ===================================================
+    // Extract AI Response
+    // ===================================================
+
     let aiResponse =
-      completion.choices[0]?.message?.content ??
-      "No response generated.";
+      completion
+        .choices[0]
+        ?.message
+        ?.content
+        ?.trim() ||
 
-    // =====================================================
-    // FINAL SAFETY CLEANUP
-    // =====================================================
+      "I couldn't find that information in the uploaded documents.";
 
-    // Remove any unresolved slash-separated placeholders
-    // that the model may still have generated.
+    // ===================================================
+    // Final Safety Cleanup
+    // ===================================================
 
-    aiResponse = aiResponse
-      .replace(
-        /\[[^\]]*\/[^\]]*\]/g,
-        ""
-      )
-      .replace(
-        /[ \t]{2,}/g,
-        " "
-      )
-      .replace(
-        /\n[ \t]+/g,
-        "\n"
-      )
-      .trim();
+    aiResponse =
+      cleanTemplatePlaceholders(
+        aiResponse
+      );
 
-    // =====================================================
+    // ===================================================
+    // IMPORTANT:
+    // Ensure citations survive cleanup
+    // ===================================================
+
+    aiResponse =
+      aiResponse
+        .replace(
+          /,\s*\./g,
+          "."
+        )
+        .replace(
+          /\s+([,.!?;:])/g,
+          "$1"
+        )
+        .trim();
+
+    // ===================================================
     // Unique Sources
-    // =====================================================
+    // ===================================================
 
-    const sources = Array.from(
-      new Map(
-        numberedChunks.map((chunk) => [
-          chunk.filename,
-          {
-            filename: chunk.filename,
-            score: chunk.score,
-          },
-        ])
-      ).values()
+    const sources =
+      Array.from(
+
+        new Map(
+
+          validChunks.map(
+            (chunk) => [
+
+              chunk.filename,
+
+              {
+                filename:
+                  chunk.filename,
+
+                score:
+                  chunk.score,
+              },
+
+            ]
+          )
+
+        ).values()
+
+      );
+
+    // ===================================================
+    // Final Debug
+    // ===================================================
+
+    console.log(
+      "===================================="
     );
 
-    // =====================================================
+    console.log(
+      "FINAL AI RESPONSE"
+    );
+
+    console.log(
+      "===================================="
+    );
+
+    console.log(
+      aiResponse
+    );
+
+    console.log(
+      "===================================="
+    );
+
+    console.log(
+      "SOURCES"
+    );
+
+    console.log(
+      "===================================="
+    );
+
+    sources.forEach(
+      (source) => {
+
+        console.log(
+          `${source.filename} | ${source.score}`
+        );
+
+      }
+    );
+
+    // ===================================================
     // Return Result
-    // =====================================================
+    // ===================================================
 
     return {
+
       success: true,
 
-      userMessage: message,
+      userMessage:
+        message,
 
       aiResponse,
 
       retrievedChunks:
-        numberedChunks,
+        validChunks,
 
       sources,
+
     };
+
   } catch (error) {
+
+    // ===================================================
+    // Error Handling
+    // ===================================================
+
     console.error(
       "Groq API Error:",
       error
     );
 
     return {
+
       success: false,
 
-      userMessage: message,
+      userMessage:
+        message,
 
       aiResponse:
         "Sorry, I am unable to answer right now.",
@@ -343,6 +600,8 @@ Answer now.
       retrievedChunks: [],
 
       sources: [],
+
     };
+
   }
 }

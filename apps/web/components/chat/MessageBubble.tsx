@@ -43,9 +43,11 @@ export default function MessageBubble({
 
       setCopied(true);
 
-      setTimeout(() => setCopied(false), 2000);
-    } catch (err) {
-      console.error(err);
+      setTimeout(() => {
+        setCopied(false);
+      }, 2000);
+    } catch (error) {
+      console.error("Copy failed:", error);
     }
   }
 
@@ -56,13 +58,13 @@ export default function MessageBubble({
       }`}
     >
       <div
-        className={`max-w-[78%] rounded-2xl px-6 py-5 break-words shadow-sm transition-all ${
+        className={`max-w-[78%] rounded-2xl px-6 py-5 break-words shadow-sm ${
           isUser
             ? "bg-cyan-500 text-black"
             : "border border-zinc-700 bg-zinc-900 text-white"
         }`}
       >
-        {/* ================= AI Header ================= */}
+        {/* AI Header */}
 
         {!isUser && (
           <div className="mb-4 flex items-center gap-2 text-sm font-semibold text-cyan-400">
@@ -70,30 +72,112 @@ export default function MessageBubble({
           </div>
         )}
 
-        {/* ================= Message ================= */}
+        {/* Message */}
 
         {isUser ? (
           <div className="whitespace-pre-wrap leading-7">
             {text}
           </div>
         ) : (
-          <div className="prose prose-invert max-w-none prose-pre:rounded-xl prose-pre:border prose-pre:border-zinc-700 prose-pre:bg-black prose-code:text-cyan-300">
+          <div
+            className="
+              prose
+              prose-invert
+              max-w-none
+              prose-headings:text-white
+              prose-p:text-zinc-200
+              prose-strong:text-white
+              prose-a:text-cyan-400
+              prose-li:text-zinc-200
+              prose-code:text-cyan-300
+            "
+          >
             <ReactMarkdown
               remarkPlugins={[remarkGfm]}
               rehypePlugins={[rehypeHighlight]}
+              components={{
+                pre({ children }) {
+                  return (
+                    <pre
+                      className="
+                        overflow-x-auto
+                        rounded-xl
+                        border
+                        border-zinc-700
+                        bg-[#0d1117]
+                        p-4
+                        text-sm
+                        leading-6
+                      "
+                    >
+                      {children}
+                    </pre>
+                  );
+                },
+
+                code({
+                  className,
+                  children,
+                  ...props
+                }) {
+                  const match =
+                    /language-(\w+)/.exec(
+                      className || ""
+                    );
+
+                  if (match) {
+                    return (
+                      <code
+                        className={`${className} text-sm`}
+                        {...props}
+                      >
+                        {children}
+                      </code>
+                    );
+                  }
+
+                  return (
+                    <code
+                      className="
+                        rounded
+                        bg-zinc-800
+                        px-1.5
+                        py-0.5
+                        text-cyan-300
+                      "
+                      {...props}
+                    >
+                      {children}
+                    </code>
+                  );
+                },
+              }}
             >
               {text}
             </ReactMarkdown>
           </div>
         )}
 
-        {/* ================= Toolbar ================= */}
+        {/* Copy Button */}
 
         {!isUser && (
           <div className="mt-5 flex items-center gap-3 border-t border-zinc-700 pt-4">
             <button
               onClick={handleCopy}
-              className="flex items-center gap-2 rounded-lg border border-zinc-700 px-3 py-2 text-sm text-zinc-300 transition hover:bg-zinc-800"
+              className="
+                flex
+                items-center
+                gap-2
+                rounded-lg
+                border
+                border-zinc-700
+                px-3
+                py-2
+                text-sm
+                text-zinc-300
+                transition
+                hover:bg-zinc-800
+              "
             >
               {copied ? (
                 <>
@@ -110,11 +194,21 @@ export default function MessageBubble({
           </div>
         )}
 
-        {/* ================= Sources ================= */}
+        {/* Sources */}
 
         {!isUser && sources.length > 0 && (
           <div className="mt-6 border-t border-zinc-700 pt-5">
-            <h4 className="mb-4 flex items-center gap-2 text-sm font-semibold text-cyan-400">
+            <h4
+              className="
+                mb-4
+                flex
+                items-center
+                gap-2
+                text-sm
+                font-semibold
+                text-cyan-400
+              "
+            >
               <FileText size={16} />
               Sources
             </h4>
@@ -123,9 +217,17 @@ export default function MessageBubble({
               {sources.map((source, index) => (
                 <div
                   key={index}
-                  className="rounded-xl border border-zinc-700 bg-zinc-800 p-4 transition hover:border-cyan-500"
+                  className="
+                    rounded-xl
+                    border
+                    border-zinc-700
+                    bg-zinc-800
+                    p-4
+                    transition
+                    hover:border-cyan-500
+                  "
                 >
-                  <div className="font-medium">
+                  <div className="font-medium text-white">
                     {source.filename}
                   </div>
 
@@ -143,6 +245,7 @@ export default function MessageBubble({
 
                   <div className="mt-2 text-xs text-zinc-400">
                     Similarity Score
+
                     <span className="ml-2 font-medium text-cyan-300">
                       {(source.score * 100).toFixed(1)}%
                     </span>
@@ -153,40 +256,97 @@ export default function MessageBubble({
           </div>
         )}
 
-        {/* ================= Retrieved Chunks ================= */}
+        {/* Retrieved Context */}
 
-        {!isUser && retrievedChunks.length > 0 && (
-          <details className="mt-6 overflow-hidden rounded-xl border border-zinc-700 bg-zinc-950">
-            <summary className="cursor-pointer px-5 py-4 font-medium text-cyan-400 transition hover:bg-zinc-900">
-              🔍 Retrieved Context ({retrievedChunks.length})
-            </summary>
+        {!isUser &&
+          retrievedChunks.length > 0 && (
+            <details
+              className="
+                mt-6
+                overflow-hidden
+                rounded-xl
+                border
+                border-zinc-700
+                bg-zinc-950
+              "
+            >
+              <summary
+                className="
+                  cursor-pointer
+                  px-5
+                  py-4
+                  font-medium
+                  text-cyan-400
+                  transition
+                  hover:bg-zinc-900
+                "
+              >
+                🔍 Retrieved Context (
+                {retrievedChunks.length})
+              </summary>
 
-            <div className="space-y-5 p-5">
-              {retrievedChunks.map((chunk, index) => (
-                <div
-                  key={index}
-                  className="rounded-xl border border-zinc-700 bg-zinc-900"
-                >
-                  <div className="flex items-center justify-between border-b border-zinc-700 px-4 py-3">
-                    <div className="font-medium text-cyan-300">
-                      📄 {chunk.filename}
+              <div className="space-y-5 p-5">
+                {retrievedChunks.map(
+                  (chunk, index) => (
+                    <div
+                      key={index}
+                      className="
+                        rounded-xl
+                        border
+                        border-zinc-700
+                        bg-zinc-900
+                      "
+                    >
+                      <div
+                        className="
+                          flex
+                          items-center
+                          justify-between
+                          border-b
+                          border-zinc-700
+                          px-4
+                          py-3
+                        "
+                      >
+                        <div className="font-medium text-cyan-300">
+                          📄 {chunk.filename}
+                        </div>
+
+                        <span
+                          className="
+                            rounded-full
+                            bg-zinc-800
+                            px-3
+                            py-1
+                            text-xs
+                            text-zinc-300
+                          "
+                        >
+                          {(chunk.score * 100).toFixed(
+                            1
+                          )}
+                          %
+                        </span>
+                      </div>
+
+                      <div className="max-h-72 overflow-y-auto p-4">
+                        <pre
+                          className="
+                            whitespace-pre-wrap
+                            text-sm
+                            leading-6
+                            text-zinc-300
+                          "
+                        >
+                          {chunk.text}
+                        </pre>
+                      </div>
                     </div>
-
-                    <span className="rounded-full bg-zinc-800 px-3 py-1 text-xs text-zinc-300">
-                      {(chunk.score * 100).toFixed(1)}%
-                    </span>
-                  </div>
-
-                  <div className="max-h-72 overflow-y-auto p-4">
-                    <pre className="whitespace-pre-wrap text-sm leading-6 text-zinc-300">
-                      {chunk.text}
-                    </pre>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </details>
-        )}
+                  )
+                )}
+              </div>
+            </details>
+          )}
       </div>
     </div>
   );

@@ -9,7 +9,7 @@ interface Chunk {
 }
 
 // ===============================================
-// Store Chunks
+// Store Chunks in Qdrant
 // ===============================================
 
 export async function storeChunks(
@@ -18,34 +18,71 @@ export async function storeChunks(
 ) {
   console.log("====================================");
   console.log("GENERATING EMBEDDINGS...");
+  console.log(`File: ${filename}`);
+  console.log(`Chunks: ${chunks.length}`);
   console.log("====================================");
 
   const points = await Promise.all(
-    chunks.map(async (chunk) => {
-      const embedding = await generateEmbedding(
-        chunk.pageContent
+    chunks.map(async (chunk, index) => {
+      const text = chunk.pageContent.trim();
+
+      // Skip empty chunks
+      if (!text) {
+        return null;
+      }
+
+      const embedding = await generateEmbedding(text);
+
+      console.log(
+        `Embedding ${index + 1}/${chunks.length} | Dimension: ${embedding.length}`
       );
 
       return {
         id: uuid(),
+
         vector: embedding,
+
         payload: {
-          text: chunk.pageContent,
+          text,
           source: "uploaded-pdf",
           filename,
+          chunkIndex: index,
         },
       };
     })
   );
 
-  console.log(`Storing ${points.length} vectors...`);
+  // Remove empty chunks
+  const validPoints = points.filter(
+    (point): point is NonNullable<typeof point> =>
+      point !== null
+  );
+
+  console.log("====================================");
+  console.log(
+    `Storing ${validPoints.length} vectors in Qdrant...`
+  );
+  console.log("====================================");
+
+  if (validPoints.length === 0) {
+    console.log("❌ No valid chunks to store");
+    return;
+  }
 
   await qdrant.upsert(COLLECTION_NAME, {
     wait: true,
-    points: points as any,
+    points: validPoints as any,
   });
 
   console.log("✅ All vectors stored successfully");
+
+  console.log(
+    `📄 File: ${filename}`
+  );
+
+  console.log(
+    `📦 Vectors stored: ${validPoints.length}`
+  );
 }
 
 // ===============================================
@@ -55,14 +92,20 @@ export async function storeChunks(
 export async function deleteVectorsByFilename(
   filename: string
 ) {
-  console.log(`Deleting vectors of ${filename}...`);
+  console.log("====================================");
+  console.log("DELETING DOCUMENT VECTORS");
+  console.log("====================================");
+
+  console.log(`📄 File: ${filename}`);
 
   await qdrant.delete(COLLECTION_NAME, {
     wait: true,
+
     filter: {
       must: [
         {
           key: "filename",
+
           match: {
             value: filename,
           },

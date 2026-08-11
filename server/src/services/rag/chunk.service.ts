@@ -1,12 +1,30 @@
 import { RecursiveCharacterTextSplitter } from "@langchain/textsplitters";
 
+// =======================================================
+// Split Document Into Chunks
+// =======================================================
 
-export async function splitIntoChunks(text: string) {
+export async function splitIntoChunks(
+  text: string
+) {
+
+  // =======================================================
+  // Text Splitter Configuration
+  // =======================================================
 
   const splitter =
     new RecursiveCharacterTextSplitter({
-      chunkSize: 1500,
-      chunkOverlap: 300,
+
+      // Larger chunks help preserve complete
+      // policy sections from the handbook.
+
+      chunkSize: 2000,
+
+      // Keep surrounding context between chunks.
+
+      chunkOverlap: 400,
+
+      // Prefer natural document boundaries.
 
       separators: [
         "\n\n",
@@ -15,35 +33,90 @@ export async function splitIntoChunks(text: string) {
         " ",
         "",
       ],
+
     });
 
 
+  // =======================================================
+  // Create Documents
+  // =======================================================
+
   const chunks =
-    await splitter.createDocuments([text]);
+    await splitter.createDocuments([
+      text,
+    ]);
 
 
-  console.log("====================================");
-  console.log("CHUNKING COMPLETE");
-  console.log("Total Chunks:", chunks.length);
-  console.log("====================================");
+  // =======================================================
+  // Chunking Debug Information
+  // =======================================================
+
+  console.log(
+    "===================================="
+  );
+
+  console.log(
+    "CHUNKING COMPLETE"
+  );
+
+  console.log(
+    "Original Characters:",
+    text.length
+  );
+
+  console.log(
+    "Total Chunks:",
+    chunks.length
+  );
+
+  console.log(
+    "Chunk Size: 2000"
+  );
+
+  console.log(
+    "Chunk Overlap: 400"
+  );
+
+  console.log(
+    "===================================="
+  );
 
 
-  chunks.forEach((chunk, index) => {
+  // =======================================================
+  // Print Every Chunk
+  // =======================================================
 
-    console.log(
-      `\n========== CHUNK ${index + 1} ==========`
-    );
+  chunks.forEach(
+    (chunk, index) => {
 
-    console.log(
-      chunk.pageContent.substring(0, 500)
-    );
+      console.log(
+        `\n========== CHUNK ${index + 1} ==========`
+      );
 
-    console.log(
-      "------------------------------------"
-    );
+      console.log(
+        "Characters:",
+        chunk.pageContent.length
+      );
 
-  });
+      console.log(
+        chunk.pageContent.substring(
+          0,
+          800
+        )
+      );
 
+      console.log(
+        "------------------------------------"
+      );
+
+    }
+  );
+
+
+  // =======================================================
+  // Return Chunks
+  // =======================================================
 
   return chunks;
+
 }
