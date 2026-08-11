@@ -4,6 +4,10 @@ import { useEffect, useRef, useState } from "react";
 import MessageBubble from "./MessageBubble";
 import TypingIndicator from "./TypingIndicator";
 
+// =====================================================
+// TYPES
+// =====================================================
+
 type Source = {
   filename: string;
   score: number;
@@ -26,6 +30,10 @@ type ChatProps = {
   conversationId: string | null;
   onConversationUpdated: () => void;
 };
+
+// =====================================================
+// COMPONENT
+// =====================================================
 
 export default function Chat({
   conversationId,
@@ -51,11 +59,16 @@ export default function Chat({
 
       try {
         const res = await fetch(
-          `http://localhost:5000/conversation/${conversationId}`
+          `http://localhost:5000/conversation/${conversationId}`,
+          {
+            cache: "no-store",
+          }
         );
 
         if (!res.ok) {
-          throw new Error("Failed to load conversation");
+          throw new Error(
+            `Failed to load conversation: ${res.status}`
+          );
         }
 
         const data = await res.json();
@@ -73,7 +86,7 @@ export default function Chat({
                 ? "ai"
                 : "user",
 
-            text: msg.content,
+            text: msg.content || "",
 
             sources:
               msg.sources ?? [],
@@ -137,7 +150,7 @@ export default function Chat({
     const userText = input.trim();
 
     // ===================================================
-    // Add user message immediately
+    // ADD USER MESSAGE + EMPTY AI MESSAGE
     // ===================================================
 
     setMessages((prev) => [
@@ -196,14 +209,16 @@ export default function Chat({
       // READ STREAM
       // =================================================
 
-      const reader =
-        res.body.getReader();
+      const reader = res.body.getReader();
 
-      const decoder =
-        new TextDecoder();
+      const decoder = new TextDecoder();
 
       let buffer = "";
       let aiText = "";
+
+      // =================================================
+      // STREAM LOOP
+      // =================================================
 
       while (true) {
         const { done, value } =
@@ -218,7 +233,7 @@ export default function Chat({
         });
 
         // =================================================
-        // SSE EVENTS
+        // SPLIT SSE EVENTS
         // =================================================
 
         const events =
@@ -226,6 +241,10 @@ export default function Chat({
 
         buffer =
           events.pop() || "";
+
+        // =================================================
+        // PROCESS EVENTS
+        // =================================================
 
         for (const event of events) {
           if (!event.trim()) {
@@ -280,7 +299,7 @@ export default function Chat({
           }
 
           // =============================================
-          // SOURCES
+          // SOURCES EVENT
           // =============================================
 
           if (eventName === "sources") {
@@ -289,8 +308,7 @@ export default function Chat({
                 JSON.parse(payload);
 
               setMessages((prev) => {
-                const updated =
-                  [...prev];
+                const updated = [...prev];
 
                 const lastIndex =
                   updated.length - 1;
@@ -317,7 +335,7 @@ export default function Chat({
           }
 
           // =============================================
-          // RETRIEVED CHUNKS
+          // RETRIEVED CHUNKS EVENT
           // =============================================
 
           if (eventName === "chunks") {
@@ -326,8 +344,7 @@ export default function Chat({
                 JSON.parse(payload);
 
               setMessages((prev) => {
-                const updated =
-                  [...prev];
+                const updated = [...prev];
 
                 const lastIndex =
                   updated.length - 1;
@@ -338,6 +355,7 @@ export default function Chat({
 
                 updated[lastIndex] = {
                   ...updated[lastIndex],
+
                   retrievedChunks:
                     chunks,
                 };
@@ -355,7 +373,7 @@ export default function Chat({
           }
 
           // =============================================
-          // AI TOKEN
+          // TOKEN EVENT
           // =============================================
 
           try {
@@ -368,8 +386,7 @@ export default function Chat({
               aiText += parsed.token;
 
               setMessages((prev) => {
-                const updated =
-                  [...prev];
+                const updated = [...prev];
 
                 const lastIndex =
                   updated.length - 1;

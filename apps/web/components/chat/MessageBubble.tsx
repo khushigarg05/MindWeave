@@ -37,6 +37,10 @@ export default function MessageBubble({
 
   const [copied, setCopied] = useState(false);
 
+  // =====================================================
+  // COPY MESSAGE
+  // =====================================================
+
   async function handleCopy() {
     try {
       await navigator.clipboard.writeText(text);
@@ -51,20 +55,60 @@ export default function MessageBubble({
     }
   }
 
+  // =====================================================
+  // SCROLL TO SOURCE
+  // =====================================================
+
+  function scrollToSource(index: number) {
+    const element = document.getElementById(
+      `source-${index}`
+    );
+
+    if (!element) {
+      return;
+    }
+
+    element.scrollIntoView({
+      behavior: "smooth",
+      block: "center",
+    });
+
+    element.classList.add(
+      "ring-2",
+      "ring-cyan-400"
+    );
+
+    setTimeout(() => {
+      element.classList.remove(
+        "ring-2",
+        "ring-cyan-400"
+      );
+    }, 2000);
+  }
+
+  // =====================================================
+  // UI
+  // =====================================================
+
   return (
     <div
       className={`flex ${
-        isUser ? "justify-end" : "justify-start"
+        isUser
+          ? "justify-end"
+          : "justify-start"
       }`}
     >
       <div
-        className={`max-w-[78%] rounded-2xl px-6 py-5 break-words shadow-sm ${
+        className={`max-w-[78%] break-words rounded-2xl px-6 py-5 shadow-sm ${
           isUser
             ? "bg-cyan-500 text-black"
             : "border border-zinc-700 bg-zinc-900 text-white"
         }`}
       >
-        {/* AI Header */}
+
+        {/* =================================================
+            AI HEADER
+        ================================================== */}
 
         {!isUser && (
           <div className="mb-4 flex items-center gap-2 text-sm font-semibold text-cyan-400">
@@ -72,7 +116,9 @@ export default function MessageBubble({
           </div>
         )}
 
-        {/* Message */}
+        {/* =================================================
+            MESSAGE
+        ================================================== */}
 
         {isUser ? (
           <div className="whitespace-pre-wrap leading-7">
@@ -96,6 +142,107 @@ export default function MessageBubble({
               remarkPlugins={[remarkGfm]}
               rehypePlugins={[rehypeHighlight]}
               components={{
+                // =================================================
+                // CLICKABLE SOURCE REFERENCES
+                // =================================================
+
+                p({ children }) {
+                  const parts = Array.isArray(
+                    children
+                  )
+                    ? children
+                    : [children];
+
+                  return (
+                    <p>
+                      {parts.map(
+                        (
+                          child,
+                          childIndex
+                        ) => {
+                          if (
+                            typeof child !==
+                            "string"
+                          ) {
+                            return child;
+                          }
+
+                          const pieces =
+                            child.split(
+                              /(\[\d+\])/
+                            );
+
+                          return pieces.map(
+                            (
+                              piece,
+                              pieceIndex
+                            ) => {
+                              const match =
+                                piece.match(
+                                  /^\[(\d+)\]$/
+                                );
+
+                              if (!match) {
+                                return (
+                                  <span
+                                    key={`${childIndex}-${pieceIndex}`}
+                                  >
+                                    {piece}
+                                  </span>
+                                );
+                              }
+
+                              const sourceIndex =
+                                Number(
+                                  match[1]
+                                );
+
+                              if (
+                                sourceIndex >
+                                sources.length
+                              ) {
+                                return (
+                                  <span
+                                    key={`${childIndex}-${pieceIndex}`}
+                                  >
+                                    {piece}
+                                  </span>
+                                );
+                              }
+
+                              return (
+                                <button
+                                  key={`${childIndex}-${pieceIndex}`}
+                                  onClick={() =>
+                                    scrollToSource(
+                                      sourceIndex
+                                    )
+                                  }
+                                  className="
+                                    ml-1
+                                    cursor-pointer
+                                    font-semibold
+                                    text-cyan-400
+                                    hover:text-cyan-300
+                                    hover:underline
+                                  "
+                                  title={`View source ${sourceIndex}`}
+                                >
+                                  [{sourceIndex}]
+                                </button>
+                              );
+                            }
+                          );
+                        }
+                      )}
+                    </p>
+                  );
+                },
+
+                // =================================================
+                // CODE BLOCK
+                // =================================================
+
                 pre({ children }) {
                   return (
                     <pre
@@ -114,6 +261,10 @@ export default function MessageBubble({
                     </pre>
                   );
                 },
+
+                // =================================================
+                // INLINE CODE
+                // =================================================
 
                 code({
                   className,
@@ -158,7 +309,9 @@ export default function MessageBubble({
           </div>
         )}
 
-        {/* Copy Button */}
+        {/* =================================================
+            COPY BUTTON
+        ================================================== */}
 
         {!isUser && (
           <div className="mt-5 flex items-center gap-3 border-t border-zinc-700 pt-4">
@@ -194,69 +347,98 @@ export default function MessageBubble({
           </div>
         )}
 
-        {/* Sources */}
+        {/* =================================================
+            SOURCES
+        ================================================== */}
 
-        {!isUser && sources.length > 0 && (
-          <div className="mt-6 border-t border-zinc-700 pt-5">
-            <h4
-              className="
-                mb-4
-                flex
-                items-center
-                gap-2
-                text-sm
-                font-semibold
-                text-cyan-400
-              "
-            >
-              <FileText size={16} />
-              Sources
-            </h4>
+        {!isUser &&
+          sources.length > 0 && (
+            <div className="mt-6 border-t border-zinc-700 pt-5">
 
-            <div className="space-y-3">
-              {sources.map((source, index) => (
-                <div
-                  key={index}
-                  className="
-                    rounded-xl
-                    border
-                    border-zinc-700
-                    bg-zinc-800
-                    p-4
-                    transition
-                    hover:border-cyan-500
-                  "
-                >
-                  <div className="font-medium text-white">
-                    {source.filename}
-                  </div>
+              <h4
+                className="
+                  mb-4
+                  flex
+                  items-center
+                  gap-2
+                  text-sm
+                  font-semibold
+                  text-cyan-400
+                "
+              >
+                <FileText size={16} />
+                Sources
+              </h4>
 
-                  <div className="mt-2 h-2 overflow-hidden rounded-full bg-zinc-700">
-                    <div
-                      className="h-full rounded-full bg-cyan-400"
-                      style={{
-                        width: `${Math.min(
-                          source.score * 100,
-                          100
-                        )}%`,
-                      }}
-                    />
-                  </div>
+              <div className="space-y-3">
 
-                  <div className="mt-2 text-xs text-zinc-400">
-                    Similarity Score
+                {sources.map(
+                  (source, index) => {
+                    const sourceNumber =
+                      index + 1;
 
-                    <span className="ml-2 font-medium text-cyan-300">
-                      {(source.score * 100).toFixed(1)}%
-                    </span>
-                  </div>
-                </div>
-              ))}
+                    return (
+                      <div
+                        key={index}
+                        id={`source-${sourceNumber}`}
+                        className="
+                          rounded-xl
+                          border
+                          border-zinc-700
+                          bg-zinc-800
+                          p-4
+                          transition-all
+                          duration-300
+                          hover:border-cyan-500
+                        "
+                      >
+
+                        <div className="font-medium text-white">
+                          [{sourceNumber}]{" "}
+                          {source.filename}
+                        </div>
+
+                        <div className="mt-2 h-2 overflow-hidden rounded-full bg-zinc-700">
+
+                          <div
+                            className="
+                              h-full
+                              rounded-full
+                              bg-cyan-400
+                            "
+                            style={{
+                              width: `${Math.min(
+                                source.score * 100,
+                                100
+                              )}%`,
+                            }}
+                          />
+
+                        </div>
+
+                        <div className="mt-2 text-xs text-zinc-400">
+                          Similarity Score
+
+                          <span className="ml-2 font-medium text-cyan-300">
+                            {(
+                              source.score * 100
+                            ).toFixed(1)}
+                            %
+                          </span>
+                        </div>
+
+                      </div>
+                    );
+                  }
+                )}
+
+              </div>
             </div>
-          </div>
-        )}
+          )}
 
-        {/* Retrieved Context */}
+        {/* =================================================
+            RETRIEVED CONTEXT
+        ================================================== */}
 
         {!isUser &&
           retrievedChunks.length > 0 && (
@@ -270,6 +452,7 @@ export default function MessageBubble({
                 bg-zinc-950
               "
             >
+
               <summary
                 className="
                   cursor-pointer
@@ -286,6 +469,7 @@ export default function MessageBubble({
               </summary>
 
               <div className="space-y-5 p-5">
+
                 {retrievedChunks.map(
                   (chunk, index) => (
                     <div
@@ -297,6 +481,7 @@ export default function MessageBubble({
                         bg-zinc-900
                       "
                     >
+
                       <div
                         className="
                           flex
@@ -308,6 +493,7 @@ export default function MessageBubble({
                           py-3
                         "
                       >
+
                         <div className="font-medium text-cyan-300">
                           📄 {chunk.filename}
                         </div>
@@ -322,14 +508,16 @@ export default function MessageBubble({
                             text-zinc-300
                           "
                         >
-                          {(chunk.score * 100).toFixed(
-                            1
-                          )}
+                          {(
+                            chunk.score * 100
+                          ).toFixed(1)}
                           %
                         </span>
+
                       </div>
 
                       <div className="max-h-72 overflow-y-auto p-4">
+
                         <pre
                           className="
                             whitespace-pre-wrap
@@ -340,13 +528,18 @@ export default function MessageBubble({
                         >
                           {chunk.text}
                         </pre>
+
                       </div>
+
                     </div>
                   )
                 )}
+
               </div>
+
             </details>
           )}
+
       </div>
     </div>
   );
