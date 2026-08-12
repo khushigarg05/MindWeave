@@ -11,9 +11,14 @@ type SearchResult = {
 
 export default function SearchPage() {
   const [query, setQuery] = useState("");
-  const [results, setResults] = useState<SearchResult[]>([]);
+  const [results, setResults] =
+    useState<SearchResult[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+
+  // =====================================================
+  // SEARCH
+  // =====================================================
 
   async function handleSearch() {
     if (!query.trim() || loading) {
@@ -71,9 +76,9 @@ export default function SearchPage() {
   return (
     <main className="min-h-full p-10">
 
-      {/* =====================================================
+      {/* =================================================
           HEADER
-      ===================================================== */}
+      ================================================= */}
 
       <div className="mb-8">
 
@@ -82,15 +87,15 @@ export default function SearchPage() {
         </h1>
 
         <p className="mt-2 text-zinc-400">
-          Search through the documents stored in your
-          MindWeave knowledge base.
+          Search through the documents stored in
+          your MindWeave knowledge base.
         </p>
 
       </div>
 
-      {/* =====================================================
+      {/* =================================================
           SEARCH BOX
-      ===================================================== */}
+      ================================================= */}
 
       <div className="mb-8 rounded-2xl border border-zinc-800 bg-zinc-900 p-5">
 
@@ -184,9 +189,9 @@ export default function SearchPage() {
 
       </div>
 
-      {/* =====================================================
+      {/* =================================================
           ERROR
-      ===================================================== */}
+      ================================================= */}
 
       {error && (
         <div
@@ -205,9 +210,9 @@ export default function SearchPage() {
         </div>
       )}
 
-      {/* =====================================================
+      {/* =================================================
           RESULTS HEADER
-      ===================================================== */}
+      ================================================= */}
 
       {results.length > 0 && (
         <div className="mb-4">
@@ -223,9 +228,9 @@ export default function SearchPage() {
         </div>
       )}
 
-      {/* =====================================================
+      {/* =================================================
           RESULTS
-      ===================================================== */}
+      ================================================= */}
 
       <div className="space-y-4">
 
@@ -336,12 +341,14 @@ export default function SearchPage() {
               "
             >
 
-              <p className="
-                whitespace-pre-wrap
-                text-sm
-                leading-7
-                text-zinc-300
-              ">
+              <p
+                className="
+                  whitespace-pre-wrap
+                  text-sm
+                  leading-7
+                  text-zinc-300
+                "
+              >
                 {result.text}
               </p>
 
@@ -353,9 +360,9 @@ export default function SearchPage() {
 
       </div>
 
-      {/* =====================================================
-          EMPTY STATE
-      ===================================================== */}
+      {/* =================================================
+          NO RESULTS
+      ================================================= */}
 
       {!loading &&
         !error &&
@@ -391,11 +398,12 @@ export default function SearchPage() {
             </p>
 
           </div>
+
         )}
 
-      {/* =====================================================
+      {/* =================================================
           INITIAL STATE
-      ===================================================== */}
+      ================================================= */}
 
       {!query &&
         results.length === 0 && (
@@ -426,11 +434,12 @@ export default function SearchPage() {
 
             <p className="mt-2 max-w-md text-sm text-zinc-500">
               Enter a question or keyword to find
-              relevant information from your uploaded
-              documents.
+              relevant information from your
+              uploaded documents.
             </p>
 
           </div>
+
         )}
 
     </main>
