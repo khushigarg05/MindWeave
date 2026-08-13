@@ -6,6 +6,9 @@ import {
   MessageSquare,
   Trash2,
 } from "lucide-react";
+const API_URL =
+  process.env.NEXT_PUBLIC_API_URL ||
+  "http://localhost:5000";
 
 type Conversation = {
   _id: string;
@@ -33,7 +36,7 @@ export default function Sidebar({
   async function loadConversations() {
     try {
       const res = await fetch(
-        "http://localhost:5000/conversation"
+        "`${API_URL}/conversation`"
       );
 
       if (!res.ok) {
@@ -67,7 +70,7 @@ export default function Sidebar({
       setLoading(true);
 
       const res = await fetch(
-        "http://localhost:5000/conversation",
+        "`${API_URL}/conversation`",
         {
           method: "POST",
         }
@@ -108,7 +111,7 @@ export default function Sidebar({
 
     try {
       const res = await fetch(
-        `http://localhost:5000/conversation/${id}`,
+        `${API_URL}/conversation/${id}`,
         {
           method: "DELETE",
         }

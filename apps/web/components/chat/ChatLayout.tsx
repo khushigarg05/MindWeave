@@ -14,7 +14,6 @@ export default function ChatLayout() {
     refreshSidebar,
     setRefreshSidebar,
   ] = useState(0);
-  console.log("ACTIVE:", activeConversation);
 
   return (
     <section className="flex h-screen overflow-hidden border-t border-zinc-800 bg-black">

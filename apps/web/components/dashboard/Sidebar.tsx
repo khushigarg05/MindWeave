@@ -1,4 +1,7 @@
 "use client";
+const API_URL =
+  process.env.NEXT_PUBLIC_API_URL ||
+  "http://localhost:5000";
 
 import { useEffect, useMemo, useState } from "react";
 import {
@@ -41,7 +44,7 @@ export default function Sidebar({
   async function loadConversations() {
     try {
       const res = await fetch(
-        "http://localhost:5000/conversation"
+        "`${API_URL}/conversation`"
       );
 
       const data = await res.json();
@@ -67,7 +70,7 @@ export default function Sidebar({
       setLoading(true);
 
       const res = await fetch(
-        "http://localhost:5000/conversation",
+        "`${API_URL}/conversation`",
         {
           method: "POST",
         }

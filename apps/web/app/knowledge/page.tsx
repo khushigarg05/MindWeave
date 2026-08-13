@@ -1,4 +1,7 @@
 "use client";
+const API_URL =
+  process.env.NEXT_PUBLIC_API_URL ||
+  "http://localhost:5000";
 
 import { useEffect, useRef, useState } from "react";
 import { FileText, RefreshCw, Trash2, Upload } from "lucide-react";
@@ -32,7 +35,7 @@ export default function KnowledgePage() {
       setError("");
 
       const res = await fetch(
-        "http://localhost:5000/upload/documents",
+        "`${API_URL}/upload/documents`",
         {
           cache: "no-store",
         }
@@ -95,7 +98,7 @@ export default function KnowledgePage() {
       formData.append("file", file);
 
       const res = await fetch(
-        "http://localhost:5000/upload",
+        "`${API_URL}/upload`",
         {
           method: "POST",
           body: formData,
@@ -147,7 +150,7 @@ export default function KnowledgePage() {
       setError("");
 
       const res = await fetch(
-        `http://localhost:5000/upload/documents/${id}`,
+        `${API_URL}/upload/documents/${id}`,
         {
           method: "DELETE",
         }

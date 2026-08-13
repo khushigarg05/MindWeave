@@ -3,6 +3,9 @@
 import { useEffect, useRef, useState } from "react";
 import MessageBubble from "./MessageBubble";
 import TypingIndicator from "./TypingIndicator";
+const API_URL =
+  process.env.NEXT_PUBLIC_API_URL ||
+  "http://localhost:5000";
 
 // =====================================================
 // TYPES
@@ -59,7 +62,7 @@ export default function Chat({
 
       try {
         const res = await fetch(
-          `http://localhost:5000/conversation/${conversationId}`,
+          `${API_URL}/conversation/${conversationId}`,
           {
             cache: "no-store",
           }
@@ -178,7 +181,7 @@ export default function Chat({
       // =================================================
 
       const res = await fetch(
-        "http://localhost:5000/chat/stream",
+        "`${API_URL}/chat/stream`",
         {
           method: "POST",
 

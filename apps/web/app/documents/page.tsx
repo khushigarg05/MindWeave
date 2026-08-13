@@ -1,4 +1,7 @@
 "use client";
+const API_URL =
+  process.env.NEXT_PUBLIC_API_URL ||
+  "http://localhost:5000";
 
 import { useEffect, useState } from "react";
 
@@ -25,7 +28,7 @@ export default function DocumentsPage() {
       setLoading(true);
 
       const res = await fetch(
-        "http://localhost:5000/upload/documents",
+        "`${API_URL}/upload/documents`",
         {
           cache: "no-store",
         }
@@ -68,7 +71,7 @@ export default function DocumentsPage() {
       setDeletingId(id);
 
       const res = await fetch(
-        `http://localhost:5000/upload/documents/${id}`,
+        `${API_URL}/upload/documents/${id}`,
         {
           method: "DELETE",
         }
