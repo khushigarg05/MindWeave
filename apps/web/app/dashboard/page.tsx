@@ -14,7 +14,7 @@ import {
 
 const API_URL =
   process.env.NEXT_PUBLIC_API_URL ||
-  "http://localhost:5000";
+  "https://mindweave-backend.onrender.com";
 
 type Feature = {
   title: string;

@@ -12,15 +12,42 @@ export default function Navbar() {
           <Logo />
         </Link>
 
-
         {/* Navigation */}
-        <nav className="hidden items-center gap-8 text-sm md:flex">
+        <nav className="hidden items-center gap-7 text-sm md:flex">
 
           <Link
-            href="/#features"
+            href="/chat"
             className="transition-colors hover:text-primary"
           >
-            Features
+            Chat
+          </Link>
+
+          <Link
+            href="/knowledge"
+            className="transition-colors hover:text-primary"
+          >
+            Knowledge
+          </Link>
+
+          <Link
+            href="/documents"
+            className="transition-colors hover:text-primary"
+          >
+            Documents
+          </Link>
+
+          <Link
+            href="/search"
+            className="transition-colors hover:text-primary"
+          >
+            Search
+          </Link>
+
+          <Link
+            href="/dashboard"
+            className="transition-colors hover:text-primary"
+          >
+            Dashboard
           </Link>
 
           <Link
@@ -31,34 +58,20 @@ export default function Navbar() {
           </Link>
 
           <Link
-            href="/chat"
-            className="transition-colors hover:text-primary"
-          >
-            Workspace
-          </Link>
-
-          <Link
             href="https://github.com/khushigarg05"
             target="_blank"
+            rel="noopener noreferrer"
             className="transition-colors hover:text-primary"
           >
             GitHub
           </Link>
 
-          <Link
-            href="/#about"
-            className="transition-colors hover:text-primary"
-          >
-            About
-          </Link>
-
         </nav>
-
 
         {/* Action Button */}
         <Link href="/chat">
           <Button>
-            Start Research
+            Open Workspace
           </Button>
         </Link>
 
