@@ -36,7 +36,7 @@ export default function Sidebar({
   async function loadConversations() {
     try {
       const res = await fetch(
-        "`${API_URL}/conversation`"
+        `${API_URL}/conversation`
       );
 
       if (!res.ok) {
@@ -70,7 +70,7 @@ export default function Sidebar({
       setLoading(true);
 
       const res = await fetch(
-        "`${API_URL}/conversation`",
+        `${API_URL}/conversation`,
         {
           method: "POST",
         }

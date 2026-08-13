@@ -34,7 +34,7 @@ export default function SearchPage() {
       setResults([]);
 
       const response = await fetch(
-        "`${API_URL}/search`",
+        `${API_URL}/search`,
         {
           method: "POST",
 

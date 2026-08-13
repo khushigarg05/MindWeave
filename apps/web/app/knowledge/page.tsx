@@ -1,10 +1,16 @@
 "use client";
+
+import { useEffect, useRef, useState } from "react";
+import {
+  FileText,
+  RefreshCw,
+  Trash2,
+  Upload,
+} from "lucide-react";
+
 const API_URL =
   process.env.NEXT_PUBLIC_API_URL ||
   "http://localhost:5000";
-
-import { useEffect, useRef, useState } from "react";
-import { FileText, RefreshCw, Trash2, Upload } from "lucide-react";
 
 type DocumentItem = {
   _id: string;
@@ -35,14 +41,16 @@ export default function KnowledgePage() {
       setError("");
 
       const res = await fetch(
-        "`${API_URL}/upload/documents`",
+        `${API_URL}/upload/documents`,
         {
           cache: "no-store",
         }
       );
 
       if (!res.ok) {
-        throw new Error("Failed to load documents");
+        throw new Error(
+          `Failed to load documents (${res.status})`
+        );
       }
 
       const data = await res.json();
@@ -56,7 +64,12 @@ export default function KnowledgePage() {
       setDocuments(data.data ?? []);
     } catch (err) {
       console.error("Document Load Error:", err);
-      setError("Unable to load documents.");
+
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Unable to load documents."
+      );
     } finally {
       setLoading(false);
     }
@@ -94,29 +107,40 @@ export default function KnowledgePage() {
       setError("");
 
       const formData = new FormData();
-
       formData.append("file", file);
 
       const res = await fetch(
-        "`${API_URL}/upload`",
+        `${API_URL}/upload`,
         {
           method: "POST",
           body: formData,
         }
       );
 
+      const contentType =
+        res.headers.get("content-type") || "";
+
+      if (!contentType.includes("application/json")) {
+        const responseText = await res.text();
+
+        throw new Error(
+          responseText ||
+            `Upload failed (${res.status})`
+        );
+      }
+
       const data = await res.json();
 
       if (!res.ok || !data.success) {
         throw new Error(
-          data.message || "Failed to upload document"
+          data.message ||
+            "Failed to upload document"
         );
       }
 
       console.log("Upload Success:", data);
 
       await loadDocuments();
-
     } catch (err) {
       console.error("Upload Error:", err);
 
@@ -127,7 +151,6 @@ export default function KnowledgePage() {
       );
     } finally {
       setUploading(false);
-
       event.target.value = "";
     }
   }
@@ -160,7 +183,8 @@ export default function KnowledgePage() {
 
       if (!res.ok || !data.success) {
         throw new Error(
-          data.message || "Failed to delete document"
+          data.message ||
+            "Failed to delete document"
         );
       }
 
@@ -172,7 +196,11 @@ export default function KnowledgePage() {
     } catch (err) {
       console.error("Delete Error:", err);
 
-      setError("Failed to delete document.");
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Failed to delete document."
+      );
     } finally {
       setDeletingId(null);
     }
@@ -205,9 +233,7 @@ export default function KnowledgePage() {
   return (
     <main className="min-h-full p-10">
 
-      {/* ==========================================
-          Header
-      ========================================== */}
+      {/* Header */}
 
       <div className="mb-8 flex items-center justify-between">
 
@@ -233,7 +259,7 @@ export default function KnowledgePage() {
             className="hidden"
           />
 
-          {/* Upload Button */}
+          {/* Upload */}
 
           <button
             onClick={() =>
@@ -249,7 +275,7 @@ export default function KnowledgePage() {
               : "Upload PDF"}
           </button>
 
-          {/* Refresh Button */}
+          {/* Refresh */}
 
           <button
             onClick={loadDocuments}
@@ -259,7 +285,9 @@ export default function KnowledgePage() {
             <RefreshCw
               size={16}
               className={
-                loading ? "animate-spin" : ""
+                loading
+                  ? "animate-spin"
+                  : ""
               }
             />
 
@@ -267,12 +295,9 @@ export default function KnowledgePage() {
           </button>
 
         </div>
-
       </div>
 
-      {/* ==========================================
-          Error
-      ========================================== */}
+      {/* Error */}
 
       {error && (
         <div className="mb-6 rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-400">
@@ -280,16 +305,11 @@ export default function KnowledgePage() {
         </div>
       )}
 
-      {/* ==========================================
-          Stats
-      ========================================== */}
+      {/* Stats */}
 
       <div className="mb-8 grid grid-cols-1 gap-4 md:grid-cols-3">
 
-        {/* Documents */}
-
         <div className="rounded-2xl border border-zinc-800 bg-zinc-900 p-5">
-
           <p className="text-sm text-zinc-500">
             Documents
           </p>
@@ -297,13 +317,9 @@ export default function KnowledgePage() {
           <p className="mt-2 text-3xl font-bold text-cyan-400">
             {documents.length}
           </p>
-
         </div>
 
-        {/* Knowledge Status */}
-
         <div className="rounded-2xl border border-zinc-800 bg-zinc-900 p-5">
-
           <p className="text-sm text-zinc-500">
             Knowledge Status
           </p>
@@ -319,13 +335,9 @@ export default function KnowledgePage() {
               ? "Indexed"
               : "Empty"}
           </p>
-
         </div>
 
-        {/* RAG */}
-
         <div className="rounded-2xl border border-zinc-800 bg-zinc-900 p-5">
-
           <p className="text-sm text-zinc-500">
             RAG
           </p>
@@ -333,28 +345,22 @@ export default function KnowledgePage() {
           <p className="mt-2 text-lg font-semibold text-cyan-400">
             Active
           </p>
-
         </div>
 
       </div>
 
-      {/* ==========================================
-          Uploaded Documents
-      ========================================== */}
+      {/* Documents */}
 
       <div className="rounded-2xl border border-zinc-800 bg-zinc-900">
 
         <div className="border-b border-zinc-800 p-5">
-
           <h2 className="text-xl font-semibold">
             Uploaded Documents
           </h2>
 
           <p className="mt-1 text-sm text-zinc-500">
-            These documents are available to the RAG
-            system.
+            These documents are available to the RAG system.
           </p>
-
         </div>
 
         {/* Loading */}
@@ -366,8 +372,6 @@ export default function KnowledgePage() {
           </div>
 
         ) : documents.length === 0 ? (
-
-          /* Empty */
 
           <div className="flex flex-col items-center justify-center p-12 text-center">
 
@@ -381,15 +385,12 @@ export default function KnowledgePage() {
             </h3>
 
             <p className="mt-2 text-sm text-zinc-500">
-              Upload a PDF to start building your
-              knowledge base.
+              Upload a PDF to start building your knowledge base.
             </p>
 
           </div>
 
         ) : (
-
-          /* Documents List */
 
           <div className="divide-y divide-zinc-800">
 
@@ -399,8 +400,6 @@ export default function KnowledgePage() {
                 key={document._id}
                 className="flex items-center justify-between gap-4 p-5 transition hover:bg-zinc-800/40"
               >
-
-                {/* Document Info */}
 
                 <div className="flex min-w-0 items-center gap-4">
 
@@ -438,10 +437,7 @@ export default function KnowledgePage() {
                     </div>
 
                   </div>
-
                 </div>
-
-                {/* Delete */}
 
                 <button
                   onClick={() =>

@@ -181,7 +181,7 @@ export default function Chat({
       // =================================================
 
       const res = await fetch(
-        "`${API_URL}/chat/stream`",
+        `${API_URL}/chat/stream`,
         {
           method: "POST",
 
