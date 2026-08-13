@@ -38,10 +38,21 @@ app.use("/documents", documentRoutes);
 // Health Check
 // ==========================
 
+// ==========================
+// Health Check
+// ==========================
+
 app.get("/", (req, res) => {
   res.json({
     success: true,
     message: "🚀 MindWeave Backend is running",
+  });
+});
+
+app.get("/health", (req, res) => {
+  res.json({
+    success: true,
+    message: "MindWeave Backend is healthy",
   });
 });
 
